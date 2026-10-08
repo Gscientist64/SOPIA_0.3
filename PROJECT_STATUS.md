@@ -4,6 +4,18 @@ _Last updated: 2026-10-08_
 
 ## Completed
 
+### Generated questions are grounded, cited and traceable
+Quizzes, exams and interview questions were previously authored from the model's
+own knowledge — an exam could ask about drug mechanisms absent from the SOPs and
+mark a wrong statement as the correct answer. All generated content now goes
+through one retrieval seam (`app/rag/grounding.py`), its prompts carry the same
+trust boundary and "no outside knowledge" rules as SOP answering, and every
+question stores the excerpts it came from (`Question.sources` /
+`InterviewQuestion.sources`, migration `0003_question_sources`). Quiz and exam
+requests return **409** when the knowledge base has nothing relevant instead of
+inventing questions; interviews fall back to generic questions, because an
+interview is about the candidate rather than the SOP.
+
 ### P0 audit blockers (all fixed and verified)
 - **Embedding dimension mismatch resolved.** Verified that Ollama's
   `mxbai-embed-large` returns **1024** dims (not 384). Added a single
@@ -84,7 +96,7 @@ _Last updated: 2026-10-08_
   Learn, Exams, Interviews, Administration pages.
 
 ### Tests
-- **90 pytest tests passing** (`cd backend && python -m pytest`).
+- **99 pytest tests passing** (`cd backend && python -m pytest`).
 - **37/37 end-to-end checks passing** (`python scripts/e2e_test.py`) against real
   Postgres + pgvector + Ollama: auth, RBAC, upload→chunk→embed, grounded answers,
   citations, refusal, injection resistance, streaming, conversations, learning,

@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.chat import CitationOut
+
 
 class InterviewStartRequest(BaseModel):
     job_title: str = Field(..., min_length=2, max_length=200)
@@ -19,6 +21,9 @@ class InterviewQuestionOut(BaseModel):
     order_index: int
     prompt: str
     question_type: str
+    # The SOP excerpts this question was generated from (empty when the knowledge
+    # base had nothing relevant for the role).
+    citations: list[CitationOut] = []
 
 
 class InterviewStartResponse(BaseModel):

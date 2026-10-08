@@ -49,6 +49,8 @@ class InterviewQuestion(Base):
     order_index = Column(Integer, nullable=False)
     prompt = Column(Text, nullable=False)
     question_type = Column(String, default="behavioral")
+    # JSON list of the SOP excerpts this question was generated from.
+    sources = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("InterviewSession", back_populates="questions")

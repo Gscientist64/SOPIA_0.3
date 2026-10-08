@@ -278,3 +278,23 @@ def fake_chunk():
     return RetrievedChunk(
         chunk=chunk, document=document, version=version, relevance=0.82, distance=0.18
     )
+
+
+@pytest.fixture
+def sop_grounding(monkeypatch, fake_chunk):
+    """Ground generated questions in a stand-in SOP chunk.
+
+    ``app.rag.grounding`` is the single retrieval seam for generated content, and
+    pgvector search cannot run on SQLite, so it is stubbed here.
+    """
+    from app.rag import grounding
+
+    monkeypatch.setattr(grounding, "retrieve_grounding", lambda *a, **k: [fake_chunk])
+
+
+@pytest.fixture
+def no_grounding(monkeypatch):
+    """Simulate a knowledge base with nothing relevant to the requested topic."""
+    from app.rag import grounding
+
+    monkeypatch.setattr(grounding, "retrieve_grounding", lambda *a, **k: [])

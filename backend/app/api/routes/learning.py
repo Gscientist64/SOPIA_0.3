@@ -12,6 +12,8 @@ from app.core.security import CurrentUser
 from app.db.session import get_db
 from app.models.assessment import Question, QuestionOption
 from app.models.learning import LearningProgress, LearningSession, LearningStatus
+from app.rag import grounding
+from app.rag.citations import build_citation_dicts, sources_to_dicts
 from app.rag.prompts import LEARNING_SYSTEM_PROMPT
 from app.schemas.learning import (
     LearningSessionOut,
@@ -192,10 +194,24 @@ def complete_session(session_id: int, current_user: CurrentUser, db: Session = D
 @router.post("/quiz", response_model=QuizOut)
 def generate_quiz(payload: QuizRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
     provider = get_ai_provider()
+
+    # Quiz questions are authored from the organisation's SOPs, so a topic the
+    # knowledge base cannot support is reported rather than answered from the
+    # model's own (possibly contradictory) knowledge.
+    try:
+        results, context = grounding.require_grounding(payload.topic, db=db, user=current_user)
+    except grounding.NoSOPContextError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    sources_json = json.dumps(build_citation_dicts(results))
+
     try:
         with log_ai_call(db, provider.name, "quiz_generate", mode="LEARNING_MODE", user_id=current_user.id):
             items = provider.generate_questions(
-                payload.topic, payload.question_count, payload.difficulty, payload.question_type
+                payload.topic,
+                payload.question_count,
+                payload.difficulty,
+                payload.question_type,
+                context=context,
             )
     except AIProviderError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
@@ -220,6 +236,7 @@ def generate_quiz(payload: QuizRequest, current_user: CurrentUser, db: Session =
             explanation=item.get("explanation"),
             difficulty=item.get("difficulty") or payload.difficulty,
             source="generated",
+            sources=sources_json,
             created_by_id=current_user.id,
         )
         db.add(question)
@@ -241,6 +258,7 @@ def generate_quiz(payload: QuizRequest, current_user: CurrentUser, db: Session =
                 question_type=question.question_type,
                 options=[str(o) for o in options],
                 difficulty=question.difficulty,
+                citations=sources_to_dicts(sources_json),
             )
         )
     db.commit()
@@ -288,6 +306,7 @@ def submit_quiz(payload: QuizSubmitRequest, current_user: CurrentUser, db: Sessi
                 "correct_answer": question.correct_answer,
                 "is_correct": correct,
                 "explanation": question.explanation,
+                "sources": sources_to_dicts(question.sources),
             }
         )
 

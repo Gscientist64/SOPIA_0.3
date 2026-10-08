@@ -7,6 +7,7 @@ import requests
 from app.ai.base import AIProvider, AIProviderError
 from app.ai.parsing import normalise_questions, parse_json_array
 from app.core.config import settings
+from app.rag.prompts import QUESTION_AUTHOR_SYSTEM_PROMPT, build_question_prompt
 
 # Known output dimension for Google's text-embedding-004 model.
 GEMINI_EMBED_DIM = 768
@@ -141,17 +142,16 @@ class GeminiProvider(AIProvider):
             return {"feedback": raw.strip()}
 
     def generate_questions(
-        self, topic: str, count: int, difficulty: str = "medium", question_type: str = "mcq"
+        self,
+        topic: str,
+        count: int,
+        difficulty: str = "medium",
+        question_type: str = "mcq",
+        context: str = "",
     ) -> list[dict[str, Any]]:
-        system = (
-            "You are an assessment author. Respond ONLY with a valid JSON array, no prose. "
-            "Each item must use exactly these keys: prompt, question_type, options (array), "
-            "correct_answer, explanation, topic, difficulty.\n"
-            'Example: [{"prompt": "What is 2 + 2?", "question_type": "mcq", '
-            '"options": ["3", "4", "5"], "correct_answer": "4", '
-            '"explanation": "Basic addition.", "topic": "Maths", "difficulty": "easy"}]'
+        prompt = build_question_prompt(topic, count, difficulty, question_type, context)
+        raw = self.generate(
+            prompt=prompt, system_prompt=QUESTION_AUTHOR_SYSTEM_PROMPT, temperature=0.5
         )
-        prompt = f"Create {count} distinct {difficulty} {question_type} questions about: {topic}."
-        raw = self.generate(prompt=prompt, system_prompt=system, temperature=0.5)
         return normalise_questions(parse_json_array(raw))
 

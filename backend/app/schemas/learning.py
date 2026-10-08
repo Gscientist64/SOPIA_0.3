@@ -3,6 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.schemas.chat import CitationOut
+
 
 class LearningStartRequest(BaseModel):
     topic: str = Field(..., min_length=2, max_length=200)
@@ -48,6 +50,8 @@ class QuizQuestion(BaseModel):
     question_type: str
     options: list[str] = []
     difficulty: str | None = None
+    # The SOP excerpts this question was generated from.
+    citations: list[CitationOut] = []
 
 
 class QuizOut(BaseModel):

@@ -98,6 +98,7 @@ export interface QuizQuestion {
   question_type: string;
   options: string[];
   difficulty?: string | null;
+  citations?: Citation[];
 }
 
 export interface ExamQuestion {
@@ -106,6 +107,7 @@ export interface ExamQuestion {
   question_type: string;
   options: string[];
   difficulty?: string | null;
+  citations?: Citation[];
 }
 
 export interface ExamStart {
@@ -136,6 +138,7 @@ export interface ExamResult {
     is_correct: boolean;
     explanation: string | null;
     topic: string | null;
+    sources?: Citation[];
   }[];
 }
 
@@ -154,6 +157,7 @@ export interface InterviewQuestion {
   order_index: number;
   prompt: string;
   question_type: string;
+  citations?: Citation[];
 }
 
 export interface UserDashboard {

@@ -15,6 +15,13 @@ learning, exam and interview practice modes.
 - **Learning mode** — an interactive tutor with sessions and progress tracking.
 - **Exam mode** — timed mock exams with scoring, explanations and weak topics.
 - **Interview mode** — conversational practice interviews with structured feedback.
+
+Every question SOPIA generates — quizzes, exams and interview questions — is
+authored from the same retrieved SOP excerpts as the answers, and each question
+records the document, version, section and page it came from. A topic the
+knowledge base cannot support returns an explicit refusal instead of questions
+invented from the model's general knowledge, which could otherwise contradict
+your own procedures.
 - **Research / Compare modes** — planned. The API reports them as unavailable, so
   the UI never offers a broken feature.
 
@@ -210,7 +217,7 @@ Then sign in at <http://localhost:5173/login>.
 
 ```bash
 cd backend
-python -m pytest                    # 90 hermetic tests (no DB or Ollama needed)
+python -m pytest                    # 99 hermetic tests (no DB or Ollama needed)
 python scripts/check_model.py       # 4 behaviour checks for the configured model
 python scripts/e2e_test.py          # 37 live checks (needs DB + Ollama running)
 ```
@@ -262,6 +269,7 @@ configuration at any time:
 | `Embedding dimension mismatch` on upload | `EMBEDDING_DIM` does not match the model output. Fix it, recreate the vector column, re-ingest. |
 | Upload succeeds but status is `Error` | Open **Knowledge Base → Versions** to read the recorded `processing_error`. |
 | SOPIA always says it cannot find an answer | Lower `MIN_RELEVANCE` (e.g. `0.35`), or confirm the document is `Active` with an active `ready` version. |
+| Quiz/exam says *"No approved SOP content matches this topic"* | Deliberate: generated questions must be traceable to a source, so nothing is invented when retrieval finds no relevant SOP. Widen the topic wording, `MIN_RELEVANCE`, or upload a document covering it. |
 | Answers are slow, or the machine lags | Use the lightweight model (`OLLAMA_MODEL=qwen2.5:1.5b`), cap inference with `OLLAMA_NUM_THREAD`, and use a short `OLLAMA_KEEP_ALIVE` so the model leaves RAM when idle. Note that deleting models frees disk, not RAM. |
 | `Cannot reach the SOPIA API` in the UI | Backend is not running, or `VITE_API_URL` is wrong. |
 | Tailwind classes have no effect | Ensure `@tailwindcss/vite` is in `vite.config.ts` and `index.css` starts with `@import "tailwindcss";`. |

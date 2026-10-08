@@ -54,9 +54,19 @@ class AIProvider(ABC):
         """Return structured feedback for a user's answer."""
 
     def generate_questions(
-        self, topic: str, count: int, difficulty: str = "medium", question_type: str = "mcq"
+        self,
+        topic: str,
+        count: int,
+        difficulty: str = "medium",
+        question_type: str = "mcq",
+        context: str = "",
     ) -> list[dict[str, Any]]:
-        """Generate practice/exam questions. Overridden by providers."""
+        """Generate practice/exam questions grounded in ``context``.
+
+        ``context`` is the delimited SOP excerpt block; providers must base every
+        question and answer on it rather than on their own knowledge. Overridden
+        by providers.
+        """
         raise NotImplementedError
 
 

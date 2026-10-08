@@ -1,15 +1,144 @@
-"""Learning, quiz, exam, interview, provider-switching and observability tests."""
+﻿"""Learning, quiz, exam, interview, provider-switching and observability tests."""
 
 import json
 
 import pytest
 
+from app.rag.prompts import QUESTION_AUTHOR_SYSTEM_PROMPT
 from app.services import chat_service
 
 
 @pytest.fixture
 def with_context(monkeypatch, fake_chunk):
     monkeypatch.setattr(chat_service, "retrieve", lambda *a, **k: [fake_chunk])
+
+
+# ----------------------------------------------------- grounded question authoring
+def test_question_prompt_defines_grounding_and_trust_boundary():
+    lowered = QUESTION_AUTHOR_SYSTEM_PROMPT.lower()
+    assert "grounding rules" in lowered
+    assert "reference data only" in lowered
+    # The model must not fall back to its own knowledge, which is how an exam can
+    # end up marking an answer correct that the SOP contradicts.
+    assert "never use general knowledge" in lowered
+    assert "do not invent" in lowered
+
+
+def test_quiz_is_rejected_without_sop_grounding(client, normal_user, no_grounding):
+    response = client.post(
+        "/api/v1/learning/quiz",
+        headers=normal_user["headers"],
+        json={"topic": "Interplanetary Travel", "question_count": 2},
+    )
+    assert response.status_code == 409
+    assert "No approved SOP content" in response.json()["detail"]
+
+
+def test_exam_is_rejected_without_sop_grounding(client, normal_user, no_grounding):
+    response = client.post(
+        "/api/v1/exams/generate",
+        headers=normal_user["headers"],
+        json={"topic": "Interplanetary Travel", "question_count": 2},
+    )
+    assert response.status_code == 409
+    assert "No approved SOP content" in response.json()["detail"]
+
+
+def test_exam_questions_cite_their_sources(client, normal_user, sop_grounding):
+    body = client.post(
+        "/api/v1/exams/generate",
+        headers=normal_user["headers"],
+        json={"topic": "Client registration", "question_count": 2},
+    ).json()
+
+    assert body["questions"], "expected generated questions"
+    for question in body["questions"]:
+        assert question["citations"], "every generated question must cite its SOP source"
+        citation = question["citations"][0]
+        assert citation["document_title"] == "Client Registration SOP"
+        assert citation["version"] == "3.2"
+        assert citation["section"] == "3. REGISTRATION PROCEDURE"
+        assert citation["page"] == 1
+
+
+def test_exam_result_details_keep_their_sources(client, normal_user, sop_grounding):
+    exam = client.post(
+        "/api/v1/exams/generate",
+        headers=normal_user["headers"],
+        json={"topic": "Client registration", "question_count": 2},
+    ).json()
+    result = client.post(
+        f"/api/v1/exams/attempts/{exam['attempt_id']}/submit",
+        headers=normal_user["headers"],
+        json={
+            "answers": [
+                {"question_id": q["id"], "answer": "4"} for q in exam["questions"]
+            ]
+        },
+    ).json()
+
+    assert result["details"]
+    for detail in result["details"]:
+        assert detail["sources"], "reviewed questions must keep their SOP sources"
+
+
+def test_quiz_questions_cite_their_sources(client, normal_user, sop_grounding):
+    body = client.post(
+        "/api/v1/learning/quiz",
+        headers=normal_user["headers"],
+        json={"topic": "Client registration", "question_count": 2},
+    ).json()
+
+    assert body["questions"]
+    for question in body["questions"]:
+        assert question["citations"]
+        assert question["citations"][0]["document_title"] == "Client Registration SOP"
+
+
+def test_interview_question_is_grounded_when_the_sop_covers_the_role(
+    client, normal_user, sop_grounding
+):
+    body = client.post(
+        "/api/v1/interviews/start",
+        headers=normal_user["headers"],
+        json={"job_title": "Registration Officer", "topics": "client registration"},
+    ).json()
+
+    citations = body["question"]["citations"]
+    assert citations
+    assert citations[0]["document_title"] == "Client Registration SOP"
+
+
+def test_interview_falls_back_when_the_knowledge_base_is_empty(
+    client, normal_user, no_grounding
+):
+    response = client.post(
+        "/api/v1/interviews/start",
+        headers=normal_user["headers"],
+        json={"job_title": "Data Analyst"},
+    )
+    # An interview is about the candidate, so an empty knowledge base must not
+    # block practice the way it blocks a quiz or an exam.
+    assert response.status_code == 200
+    assert response.json()["question"]["prompt"]
+    assert response.json()["question"]["citations"] == []
+
+
+def test_interview_survives_a_retrieval_failure(client, normal_user, monkeypatch):
+    from app.rag import grounding
+
+    def boom(*args, **kwargs):
+        raise RuntimeError("vector search unavailable")
+
+    monkeypatch.setattr(grounding, "retrieve_grounding", boom)
+
+    response = client.post(
+        "/api/v1/interviews/start",
+        headers=normal_user["headers"],
+        json={"job_title": "Data Analyst"},
+    )
+    assert response.status_code == 200
+    assert response.json()["question"]["prompt"]
 
 
 # ------------------------------------------------------------------- learning
@@ -78,7 +207,7 @@ def test_learning_session_can_be_completed(client, normal_user):
 
 
 # ------------------------------------------------------------------------ quiz
-def test_quiz_generation_and_scoring(client, normal_user):
+def test_quiz_generation_and_scoring(client, normal_user, sop_grounding):
     quiz = client.post(
         "/api/v1/learning/quiz",
         headers=normal_user["headers"],
@@ -106,7 +235,7 @@ def test_quiz_generation_and_scoring(client, normal_user):
     assert all(d["is_correct"] for d in body["details"])
 
 
-def test_quiz_scoring_marks_wrong_answers(client, normal_user):
+def test_quiz_scoring_marks_wrong_answers(client, normal_user, sop_grounding):
     quiz = client.post(
         "/api/v1/learning/quiz",
         headers=normal_user["headers"],
@@ -130,7 +259,7 @@ def test_quiz_scoring_marks_wrong_answers(client, normal_user):
 
 
 # ------------------------------------------------------------------------ exam
-def test_exam_generate_and_full_score(client, normal_user):
+def test_exam_generate_and_full_score(client, normal_user, sop_grounding):
     response = client.post(
         "/api/v1/exams/generate",
         headers=normal_user["headers"],
@@ -165,7 +294,7 @@ def test_exam_generate_and_full_score(client, normal_user):
     assert all(d["explanation"] for d in body["details"])
 
 
-def test_exam_submission_is_idempotent(client, normal_user):
+def test_exam_submission_is_idempotent(client, normal_user, sop_grounding):
     exam = client.post(
         "/api/v1/exams/generate",
         headers=normal_user["headers"],
@@ -187,7 +316,7 @@ def test_exam_submission_is_idempotent(client, normal_user):
     assert first["score"] == second["score"]
 
 
-def test_exam_attempts_are_listed(client, normal_user):
+def test_exam_attempts_are_listed(client, normal_user, sop_grounding):
     client.post(
         "/api/v1/exams/generate",
         headers=normal_user["headers"],
@@ -198,7 +327,7 @@ def test_exam_attempts_are_listed(client, normal_user):
     assert len(response.json()) == 1
 
 
-def test_exam_attempt_of_another_user_is_hidden(client, admin, normal_user):
+def test_exam_attempt_of_another_user_is_hidden(client, admin, normal_user, sop_grounding):
     exam = client.post(
         "/api/v1/exams/generate",
         headers=normal_user["headers"],
@@ -211,7 +340,7 @@ def test_exam_attempt_of_another_user_is_hidden(client, admin, normal_user):
 
 
 # ------------------------------------------------------------------- interview
-def test_interview_flow_returns_feedback_and_summary(client, normal_user):
+def test_interview_flow_returns_feedback_and_summary(client, normal_user, no_grounding):
     start = client.post(
         "/api/v1/interviews/start",
         headers=normal_user["headers"],
@@ -246,7 +375,7 @@ def test_interview_flow_returns_feedback_and_summary(client, normal_user):
     assert body["summary"]["questions_answered"] == 2
 
 
-def test_interview_answering_beyond_last_question_is_rejected(client, normal_user):
+def test_interview_answering_beyond_last_question_is_rejected(client, normal_user, no_grounding):
     session_id = client.post(
         "/api/v1/interviews/start",
         headers=normal_user["headers"],

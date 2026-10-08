@@ -1,8 +1,9 @@
 import { useRef, useState } from "react";
 import { GraduationCap, Loader2, Send, Sparkles } from "lucide-react";
 import Markdown from "../components/Markdown";
+import Sources from "../components/Sources";
 import { api, errorMessage } from "../services/api";
-import type { LearningSession, QuizQuestion } from "../types";
+import type { Citation, LearningSession, QuizQuestion } from "../types";
 
 interface Turn {
   role: "user" | "tutor";
@@ -21,6 +22,7 @@ interface QuizResult {
     correct_answer: string | null;
     is_correct: boolean;
     explanation: string | null;
+    sources?: Citation[];
   }[];
 }
 
@@ -230,6 +232,7 @@ export default function Learn() {
                 <p className="text-sm font-medium text-slate-700">
                   {index + 1}. {q.prompt}
                 </p>
+                <Sources citations={q.citations} className="mt-2" />
                 <div className="mt-2 space-y-1.5">
                   {q.options.length > 0 ? (
                     q.options.map((opt) => (
@@ -303,6 +306,7 @@ export default function Learn() {
                   </p>
                 )}
                 {d.explanation && <p className="mt-1 text-slate-500">{d.explanation}</p>}
+                <Sources citations={d.sources} className="mt-2" />
               </div>
             ))}
           </div>

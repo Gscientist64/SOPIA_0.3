@@ -40,6 +40,9 @@ class Question(Base):
     explanation = Column(Text)
     difficulty = Column(String, default="medium")
     source = Column(String, default="generated")  # generated | manual
+    # JSON list of the SOP excerpts this question was generated from, so a
+    # question can always be traced back to the responsible document.
+    sources = Column(Text)
     created_by_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

@@ -4,6 +4,8 @@ Turns retrieval results into API-friendly citation dicts and persists them as
 ``Citation`` rows attached to an assistant message.
 """
 
+import json
+
 from sqlalchemy.orm import Session
 
 from app.models.chat import Citation
@@ -67,3 +69,18 @@ def citations_to_dicts(citations: list[Citation]) -> list[dict]:
         }
         for c in citations
     ]
+
+
+def sources_to_dicts(raw: str | None) -> list[dict]:
+    """Parse the JSON ``sources`` recorded on a generated question.
+
+    Questions store the excerpts they were authored from as a JSON list, so a
+    generated question can always be traced back to the responsible SOP.
+    """
+    if not raw:
+        return []
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return data if isinstance(data, list) else []

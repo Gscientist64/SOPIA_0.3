@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { CheckCircle2, Loader2, Send, Users } from "lucide-react";
 import Markdown from "../components/Markdown";
+import Sources from "../components/Sources";
 import { api, errorMessage } from "../services/api";
 import type { InterviewQuestion, InterviewSession } from "../types";
 
@@ -195,6 +196,7 @@ export default function Interviews() {
           <div key={i} className="space-y-2">
             <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
               <p className="font-medium text-slate-700">{entry.question.prompt}</p>
+              <Sources citations={entry.question.citations} className="mt-2" />
             </div>
             <div className="flex justify-end">
               <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-teal-600 px-4 py-2.5 text-sm text-white">
@@ -215,6 +217,7 @@ export default function Interviews() {
         {current && (
           <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
             <p className="font-medium text-slate-700">{current.prompt}</p>
+            <Sources citations={current.citations} className="mt-2" />
           </div>
         )}
 

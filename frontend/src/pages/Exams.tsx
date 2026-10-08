@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { AlertTriangle, BookOpen, Clock, Loader2 } from "lucide-react";
+import Sources from "../components/Sources";
 import { api, errorMessage } from "../services/api";
 import type { ExamResult, ExamStart } from "../types";
 
@@ -210,6 +211,8 @@ export default function Exams() {
 
           <p className="mt-4 text-sm font-medium text-slate-800">{current.prompt}</p>
 
+          <Sources citations={current.citations} className="mt-2" />
+
           <div className="mt-3 space-y-2">
             {current.options.length > 0 ? (
               current.options.map((opt) => (
@@ -329,6 +332,7 @@ export default function Exams() {
                   </p>
                 )}
                 {d.explanation && <p className="mt-1 text-slate-500">{d.explanation}</p>}
+                <Sources citations={d.sources} className="mt-2" />
               </div>
             ))}
           </div>

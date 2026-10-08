@@ -15,7 +15,10 @@ from app.models.interview import (
     InterviewSession,
     InterviewStatus,
 )
-from app.rag.prompts import INTERVIEW_SYSTEM_PROMPT
+from app.rag import grounding
+from app.rag.citations import build_citation_dicts, sources_to_dicts
+from app.rag.prompts import INTERVIEW_SYSTEM_PROMPT, build_interview_prompt
+from app.rag.retrieval import build_context
 from app.schemas.interview import (
     InterviewAnswerRequest,
     InterviewAnswerResponse,
@@ -38,8 +41,36 @@ _FALLBACK_QUESTIONS = [
 ]
 
 
-def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> list[dict]:
-    prompt = (
+def _question_out(question: InterviewQuestion) -> InterviewQuestionOut:
+    return InterviewQuestionOut(
+        id=question.id,
+        order_index=question.order_index,
+        prompt=question.prompt,
+        question_type=question.question_type,
+        citations=sources_to_dicts(question.sources),
+    )
+
+
+def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> tuple[list[dict], str | None]:
+    """Return ``(items, sources_json)``.
+
+    Interview questions are grounded in the organisation's SOPs when the knowledge
+    base covers the role, so practice reflects how the organisation actually works.
+    Unlike quizzes and exams, an empty knowledge base is not an error here — an
+    interview is about the candidate, so it falls back to generic questions.
+    """
+    focus = payload.topics or payload.job_title
+    try:
+        results = grounding.retrieve_grounding(focus, db=db, user=user)
+    except Exception as exc:  # noqa: BLE001 - grounding is best-effort for interviews
+        # A knowledge-base problem must not stop someone practising an interview,
+        # unlike quizzes and exams which are required to be grounded.
+        logger.warning("SOP grounding unavailable for interview questions: %s", exc)
+        results = []
+    context = build_context(results) if results else ""
+    sources_json = json.dumps(build_citation_dicts(results)) if results else None
+
+    instruction = (
         f"Create 5 realistic interview questions for a {payload.job_title} role.\n"
         f"Industry: {payload.industry or 'general'}\n"
         f"Experience level: {payload.experience_level or 'mid-level'}\n"
@@ -47,16 +78,21 @@ def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> l
         f"Focus topics: {payload.topics or 'general role fit'}\n"
         'Respond ONLY with a JSON array of objects with keys "prompt" and "question_type".'
     )
+    prompt = build_interview_prompt(instruction, context)
+
     try:
         with log_ai_call(db, provider.name, "interview_questions", mode="INTERVIEW_MODE", user_id=user.id):
             raw = provider.generate(prompt=prompt, system_prompt=INTERVIEW_SYSTEM_PROMPT)
         items = parse_json_array(raw)
         cleaned = [i for i in items if (i.get("prompt") or "").strip()]
         if cleaned:
-            return cleaned[:5]
+            return cleaned[:5], sources_json
     except AIProviderError as exc:
         logger.warning("Interview question generation failed: %s", exc)
-    return [{"prompt": q, "question_type": "behavioral"} for q in _FALLBACK_QUESTIONS]
+    return (
+        [{"prompt": q, "question_type": "behavioral"} for q in _FALLBACK_QUESTIONS],
+        sources_json,
+    )
 
 
 @router.post("/start", response_model=InterviewStartResponse)
@@ -64,7 +100,7 @@ def start_interview(
     payload: InterviewStartRequest, current_user: CurrentUser, db: Session = Depends(get_db)
 ):
     provider = get_ai_provider()
-    items = _generate_questions(provider, db, current_user, payload)
+    items, sources_json = _generate_questions(provider, db, current_user, payload)
 
     session = InterviewSession(
         user_id=current_user.id,
@@ -86,6 +122,7 @@ def start_interview(
             order_index=index,
             prompt=(item.get("prompt") or "").strip(),
             question_type=item.get("question_type") or "behavioral",
+            sources=sources_json,
         )
         db.add(question)
         db.flush()
@@ -98,7 +135,7 @@ def start_interview(
     return InterviewStartResponse(
         session_id=session.id,
         job_title=session.job_title,
-        question=InterviewQuestionOut.model_validate(first),
+        question=_question_out(first),
     )
 
 
@@ -178,7 +215,7 @@ def answer_question(
         session_id=session.id,
         feedback=feedback,
         score=score,
-        next_question=InterviewQuestionOut.model_validate(next_question) if next_question else None,
+        next_question=_question_out(next_question) if next_question else None,
         done=next_question is None,
         summary=summary,
     )

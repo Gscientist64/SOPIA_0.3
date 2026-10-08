@@ -19,6 +19,8 @@ from app.models.assessment import (
     QuestionOption,
     QuestionType,
 )
+from app.rag import grounding
+from app.rag.citations import build_citation_dicts, sources_to_dicts
 from app.schemas.assessment import (
     ExamAttemptOut,
     ExamGenerateRequest,
@@ -53,6 +55,7 @@ def _question_out(db: Session, question: Question) -> ExamQuestionOut:
         question_type=question.question_type,
         options=_question_options(db, question),
         difficulty=question.difficulty,
+        citations=sources_to_dicts(question.sources),
     )
 
 
@@ -70,10 +73,24 @@ def generate_exam(
     payload: ExamGenerateRequest, current_user: CurrentUser, db: Session = Depends(get_db)
 ):
     provider = get_ai_provider()
+
+    # Questions are authored from the organisation's own SOPs, never from the
+    # model's general knowledge, so a topic the knowledge base cannot support is
+    # reported instead of silently producing ungrounded questions.
+    try:
+        results, context = grounding.require_grounding(payload.topic, db=db, user=current_user)
+    except grounding.NoSOPContextError as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    sources_json = json.dumps(build_citation_dicts(results))
+
     try:
         with log_ai_call(db, provider.name, "exam_generate", mode="EXAM_MODE", user_id=current_user.id):
             items = provider.generate_questions(
-                payload.topic, payload.question_count, payload.difficulty, payload.question_type
+                payload.topic,
+                payload.question_count,
+                payload.difficulty,
+                payload.question_type,
+                context=context,
             )
     except AIProviderError as exc:
         raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
@@ -98,6 +115,7 @@ def generate_exam(
             explanation=item.get("explanation"),
             difficulty=item.get("difficulty") or payload.difficulty,
             source="generated",
+            sources=sources_json,
             created_by_id=current_user.id,
         )
         db.add(question)
@@ -194,6 +212,7 @@ def _build_result(db: Session, attempt: ExamAttempt) -> ExamResultOut:
                 "is_correct": bool(answer.is_correct),
                 "explanation": question.explanation if question else None,
                 "topic": question.topic_label if question else None,
+                "sources": sources_to_dicts(question.sources) if question else [],
             }
         )
     return ExamResultOut(
