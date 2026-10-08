@@ -1,0 +1,42 @@
+# --- Secrets: never commit these ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+# Local run notes containing the admin password in clear text.
+login.txt
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+
+# --- Node / frontend ---
+node_modules/
+dist/
+build/
+.vite/
+*.local
+
+# --- Uploads / user data (may contain confidential SOPs) ---
+backend/uploads/
+backend/data/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.log
+
+# --- Tooling artefacts ---
+.kilo/
