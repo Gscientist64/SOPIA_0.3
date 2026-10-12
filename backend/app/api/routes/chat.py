@@ -6,6 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.api.serializers import message_out
+from app.core.rate_limit import CHAT_LIMIT
 from app.core.security import CurrentUser
 from app.db.session import SessionLocal, get_db
 from app.models.chat import ChatMode
@@ -51,7 +52,12 @@ def list_modes():
 
 
 @router.post("/", response_model=ChatResponse)
-def chat(request: ChatRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def chat(
+    request: ChatRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(CHAT_LIMIT),
+):
     mode = _validate_mode(request.mode)
     conversation = chat_service.ensure_conversation(
         db, current_user, request.conversation_id, mode, request.message
@@ -67,7 +73,12 @@ def chat(request: ChatRequest, current_user: CurrentUser, db: Session = Depends(
 
 
 @router.post("/stream")
-def chat_stream(request: ChatRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def chat_stream(
+    request: ChatRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(CHAT_LIMIT),
+):
     mode = _validate_mode(request.mode)
     conversation = chat_service.ensure_conversation(
         db, current_user, request.conversation_id, mode, request.message

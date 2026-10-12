@@ -1,10 +1,26 @@
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # backend/app/core/config.py -> parents: [core, app, backend, <project root>]
 BASE_DIR = Path(__file__).resolve().parents[2]
 PROJECT_ROOT = BASE_DIR.parent
+
+# The sample values shipped in .env.example. Booting production with one of these
+# would let anyone forge a JWT, so they are rejected outright.
+INSECURE_SECRET_KEYS = {
+    "",
+    "change-me-in-env",
+    "replace_with_a_long_random_secret",
+}
+MIN_PRODUCTION_SECRET_LENGTH = 32
+
+_LOCALHOST_PREFIXES = ("http://localhost", "http://127.0.0.1", "http://[::1]")
+
+
+def _is_localhost_origin(origin: str) -> bool:
+    return origin.startswith(_LOCALHOST_PREFIXES)
 
 
 class Settings(BaseSettings):
@@ -17,6 +33,7 @@ class Settings(BaseSettings):
 
     PROJECT_NAME: str = "SOPIA"
     API_V1_PREFIX: str = "/api/v1"
+    # "production" activates the start-up safety checks below.
     ENVIRONMENT: str = "development"
 
     # --- Database ---
@@ -28,6 +45,15 @@ class Settings(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     CORS_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173"
+    # Host names the API will answer for. "*" accepts any (fine behind a local
+    # proxy); set the real domain(s) so Host-header attacks are rejected.
+    ALLOWED_HOSTS: str = "*"
+    # Interactive API docs. Left unset they follow the environment: available in
+    # development, hidden in production unless explicitly re-enabled.
+    ENABLE_API_DOCS: bool | None = None
+    # Per-client rate limiting. Disabled in the test suite, which fires many
+    # requests from one address in seconds.
+    RATE_LIMIT_ENABLED: bool = True
 
     # --- Uploads ---
     UPLOAD_DIR: str = "uploads"
@@ -43,7 +69,10 @@ class Settings(BaseSettings):
 
     # Local LLM (Ollama)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "qwen2.5:3b"
+    # qwen2.5:1.5b is the recommended default: it fits a 16 GB laptop and was
+    # verified against SOPIA's prompts. Step up to qwen2.5:3b or llama3 with more
+    # RAM, then re-run scripts/check_model.py.
+    OLLAMA_MODEL: str = "qwen2.5:1.5b"
     OLLAMA_EMBED_MODEL: str = "mxbai-embed-large"
     # How long Ollama keeps a model resident in RAM after a request. A short
     # value frees memory (less system lag) at the cost of reloading next time.
@@ -72,6 +101,54 @@ class Settings(BaseSettings):
     @property
     def allowed_extension_set(self) -> set[str]:
         return {e.strip().lower() for e in self.ALLOWED_EXTENSIONS.split(",") if e.strip()}
+
+    @property
+    def is_production(self) -> bool:
+        return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
+    @property
+    def allowed_host_list(self) -> list[str]:
+        return [h.strip() for h in self.ALLOWED_HOSTS.split(",") if h.strip()] or ["*"]
+
+    @property
+    def api_docs_enabled(self) -> bool:
+        if self.ENABLE_API_DOCS is not None:
+            return self.ENABLE_API_DOCS
+        return not self.is_production
+
+    @model_validator(mode="after")
+    def _refuse_unsafe_production(self) -> "Settings":
+        """Fail fast rather than run production on development defaults.
+
+        A missing .env would otherwise leave the JWT signing key at a value that
+        is published in this repository, which lets anyone mint an admin token.
+        """
+        if not self.is_production:
+            return self
+
+        problems: list[str] = []
+        if (
+            self.SECRET_KEY in INSECURE_SECRET_KEYS
+            or len(self.SECRET_KEY) < MIN_PRODUCTION_SECRET_LENGTH
+        ):
+            problems.append(
+                "SECRET_KEY must be a long random value "
+                '(python -c "import secrets; print(secrets.token_urlsafe(48))")'
+            )
+        if not self.cors_origin_list:
+            problems.append("CORS_ORIGINS must list the deployed frontend origin(s)")
+        elif all(_is_localhost_origin(origin) for origin in self.cors_origin_list):
+            problems.append(
+                "CORS_ORIGINS still only allows localhost, so the deployed frontend "
+                "could not call this API"
+            )
+        if self.allowed_host_list == ["*"]:
+            problems.append("ALLOWED_HOSTS must name the public host(s) of the API")
+        if problems:
+            raise ValueError(
+                "Refusing to start with ENVIRONMENT=production: " + "; ".join(problems)
+            )
+        return self
 
 
 settings = Settings()

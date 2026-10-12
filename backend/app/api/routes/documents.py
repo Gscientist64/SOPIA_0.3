@@ -3,6 +3,7 @@ from datetime import date
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy.orm import Session
 
+from app.core.rate_limit import REPROCESS_LIMIT, UPLOAD_LIMIT
 from app.core.security import AdminUser, CurrentUser
 from app.db.session import get_db
 from app.models.document import (
@@ -48,6 +49,7 @@ def upload_document(
     effective_date: date | None = Form(None),
     review_date: date | None = Form(None),
     db: Session = Depends(get_db),
+    _: None = Depends(UPLOAD_LIMIT),
 ):
     """Upload a new SOP/document. Administrators only."""
     document = doc_service.create_document(
@@ -151,6 +153,7 @@ def add_version(
     review_date: date | None = Form(None),
     activate: bool = Form(True),
     db: Session = Depends(get_db),
+    _: None = Depends(UPLOAD_LIMIT),
 ):
     document = _get_document_for_user(db, document_id, admin)
     version = doc_service.add_version(
@@ -196,7 +199,12 @@ def activate_version(
 
 
 @router.post("/{document_id}/reprocess", response_model=VersionCreateOut)
-def reprocess_document(document_id: int, admin: AdminUser, db: Session = Depends(get_db)):
+def reprocess_document(
+    document_id: int,
+    admin: AdminUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(REPROCESS_LIMIT),
+):
     document = _get_document_for_user(db, document_id, admin)
     version = (
         db.query(DocumentVersion)

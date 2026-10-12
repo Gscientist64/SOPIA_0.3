@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.api.serializers import message_out
+from app.core.rate_limit import CHAT_LIMIT
 from app.core.security import CurrentUser
 from app.db.session import get_db
 from app.models.chat import ChatMode, Conversation, Message, MessageRole
@@ -109,6 +110,7 @@ def retry_message(
     message_id: int,
     current_user: CurrentUser,
     db: Session = Depends(get_db),
+    _: None = Depends(CHAT_LIMIT),
 ):
     conversation = _owned_conversation(db, conversation_id, current_user)
     message = chat_service.regenerate_last(db, current_user, conversation, message_id)

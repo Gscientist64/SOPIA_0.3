@@ -3,7 +3,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.core.rate_limit import rate_limit
+from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT
 from app.core.security import (
     CurrentUser,
     create_access_token,
@@ -51,7 +51,11 @@ def _token_pair(user: User) -> dict:
 
 
 @router.post("/register", response_model=dict, status_code=status.HTTP_201_CREATED)
-def register(payload: UserCreate, db: Session = Depends(get_db)):
+def register(
+    payload: UserCreate,
+    db: Session = Depends(get_db),
+    _: None = Depends(REGISTER_LIMIT),
+):
     """Register a new user.
 
     The very first account created becomes the SUPER_ADMIN bootstrap account;
@@ -86,7 +90,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
 def login(
     payload: UserLogin,
     db: Session = Depends(get_db),
-    _: None = Depends(rate_limit(20, 60)),
+    _: None = Depends(AUTH_LIMIT),
 ):
     user = _authenticate(db, payload.email, payload.password)
     return _token_pair(user)
@@ -96,7 +100,7 @@ def login(
 def login_form(
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
-    _: None = Depends(rate_limit(20, 60)),
+    _: None = Depends(AUTH_LIMIT),
 ):
     """OAuth2 password-flow endpoint (used by the Swagger 'Authorize' button)."""
     user = _authenticate(db, form_data.username, form_data.password)

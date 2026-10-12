@@ -2,6 +2,8 @@
 .env
 .env.*
 !.env.example
+# Deployment templates are intentionally tracked; they hold no real values.
+!.env.production.example
 *.pem
 *.key
 # Local run notes containing the admin password in clear text.

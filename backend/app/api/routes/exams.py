@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.ai.base import AIProviderError
 from app.ai.router import get_ai_provider
+from app.core.rate_limit import GENERATION_LIMIT
 from app.core.security import CurrentUser
 from app.db.session import get_db
 from app.models.assessment import (
@@ -70,7 +71,10 @@ def _load_questions(db: Session, exam: ExamSession) -> list[Question]:
 
 @router.post("/generate", response_model=ExamStartResponse)
 def generate_exam(
-    payload: ExamGenerateRequest, current_user: CurrentUser, db: Session = Depends(get_db)
+    payload: ExamGenerateRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(GENERATION_LIMIT),
 ):
     provider = get_ai_provider()
 

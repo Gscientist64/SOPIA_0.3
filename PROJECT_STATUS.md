@@ -4,6 +4,36 @@ _Last updated: 2026-10-08_
 
 ## Completed
 
+### Production deployment preparation
+The application was ready but there was **no way to deploy it**: no Dockerfile or
+process manager, no reverse-proxy config, a dev-only launcher, and — most
+dangerously — a `SECRET_KEY` that silently fell back to the value published in
+this repository, letting anyone forge an admin token.
+
+- `ENVIRONMENT=production` now activates **start-up safety checks** in
+  `app/core/config.py`; the API refuses to boot when `SECRET_KEY` is a
+  placeholder or shorter than 32 characters, `CORS_ORIGINS` still points only at
+  localhost, or `ALLOWED_HOSTS` is `*`.
+- `ALLOWED_HOSTS` is enforced via `TrustedHostMiddleware`, and interactive API
+  docs plus the OpenAPI schema are hidden in production.
+- `GET /ready` reports database readiness (and returns 503 when the database is
+  unreachable) so a platform can distinguish liveness from readiness.
+- **Rate limiting extended from 2 endpoints to 15.** Chat, quiz/exam/interview
+  generation, uploads, reprocessing and registration are now throttled per
+  client, with `RATE_LIMIT_ENABLED` as a global kill switch (disabled in tests).
+  Previously one user could saturate the CPU-only AI backend at will.
+- `backend/serve.py` is the production launcher: it runs `alembic upgrade head`
+  then starts Uvicorn on `0.0.0.0` with configurable workers, no reload, and
+  trusted-proxy headers so per-client rate limiting sees the real visitor.
+- Deployment artifacts: `.env.production.example`,
+  `frontend/.env.production.example`, `deploy/sopia-api.service` (systemd),
+  `deploy/windows/install-sopia-service.ps1` (NSSM), `deploy/nginx-sopia.conf`
+  (TLS, SSE streaming with buffering disabled, 1-hour read timeout for slow
+  ingestion) and a step-by-step **DEPLOYMENT.md** runbook.
+
+Not yet verified against a real server — the runbook's verification checklist is
+the first thing to work through on the target VM.
+
 ### Generated questions are grounded, cited and traceable
 Quizzes, exams and interview questions were previously authored from the model's
 own knowledge — an exam could ask about drug mechanisms absent from the SOPs and
@@ -137,7 +167,7 @@ interview is about the candidate rather than the SOP.
   rule-based fallback, exam/quiz surface a clear error instead.
 
 ## Next Priority
-1. Rotate the exposed database credential, and delete or ignore `login.txt`.
+1. Run the DEPLOYMENT.md checklist on the real VM and fix whatever it surfaces.
 2. Move ingestion to a background worker and surface processing progress in the UI.
 3. Add an embedding-based reranker and an HNSW index for scale.
 4. Implement Research mode and Compare mode (SOP vs external information).

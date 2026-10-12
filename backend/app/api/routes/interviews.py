@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.ai.base import AIProviderError
 from app.ai.parsing import parse_json_array
 from app.ai.router import get_ai_provider
+from app.core.rate_limit import CHAT_LIMIT, GENERATION_LIMIT
 from app.core.security import CurrentUser
 from app.db.session import get_db
 from app.models.interview import (
@@ -97,7 +98,10 @@ def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> t
 
 @router.post("/start", response_model=InterviewStartResponse)
 def start_interview(
-    payload: InterviewStartRequest, current_user: CurrentUser, db: Session = Depends(get_db)
+    payload: InterviewStartRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(GENERATION_LIMIT),
 ):
     provider = get_ai_provider()
     items, sources_json = _generate_questions(provider, db, current_user, payload)
@@ -156,6 +160,7 @@ def answer_question(
     payload: InterviewAnswerRequest,
     current_user: CurrentUser,
     db: Session = Depends(get_db),
+    _: None = Depends(CHAT_LIMIT),
 ):
     session = _owned_session(db, session_id, current_user)
     question = (

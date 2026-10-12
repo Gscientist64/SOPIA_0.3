@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.ai.base import AIProviderError
 from app.ai.parsing import parse_json_array, parse_json_object
 from app.ai.router import get_ai_provider
+from app.core.rate_limit import CHAT_LIMIT, GENERATION_LIMIT
 from app.core.security import CurrentUser
 from app.db.session import get_db
 from app.models.assessment import Question, QuestionOption
@@ -66,7 +67,12 @@ def _session_out(session: LearningSession) -> LearningSessionOut:
 
 
 @router.post("/sessions/start", response_model=LearningTurnResponse)
-def start_session(payload: LearningStartRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def start_session(
+    payload: LearningStartRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(GENERATION_LIMIT),
+):
     provider = get_ai_provider()
     outline = _outline(db, provider, payload.topic)
     sections = outline.get("sections") or []
@@ -108,7 +114,12 @@ def start_session(payload: LearningStartRequest, current_user: CurrentUser, db: 
 
 
 @router.post("/sessions/turn", response_model=LearningTurnResponse)
-def learning_turn(payload: LearningTurnRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def learning_turn(
+    payload: LearningTurnRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(CHAT_LIMIT),
+):
     if payload.session_id is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="session_id is required")
     session = (
@@ -192,7 +203,12 @@ def complete_session(session_id: int, current_user: CurrentUser, db: Session = D
 
 
 @router.post("/quiz", response_model=QuizOut)
-def generate_quiz(payload: QuizRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def generate_quiz(
+    payload: QuizRequest,
+    current_user: CurrentUser,
+    db: Session = Depends(get_db),
+    _: None = Depends(GENERATION_LIMIT),
+):
     provider = get_ai_provider()
 
     # Quiz questions are authored from the organisation's SOPs, so a topic the

@@ -22,6 +22,9 @@ os.environ["SECRET_KEY"] = "test-secret-key"
 os.environ["AI_PROVIDER"] = "local"
 os.environ["EMBEDDING_DIM"] = "1024"
 os.environ["GEMINI_API_KEY"] = ""
+# The suite issues many requests from one address in seconds, which the
+# production rate limiter would reject.
+os.environ["RATE_LIMIT_ENABLED"] = "false"
 
 # SQLite cannot bind Python lists natively; pgvector passes vectors as lists.
 sqlite3.register_adapter(list, lambda value: json.dumps(value))

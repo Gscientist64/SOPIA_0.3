@@ -1,0 +1,55 @@
+# SOPIA API systemd unit (Linux VM).
+#
+# Install:
+#   sudo cp deploy/sopia-api.service /etc/systemd/system/sopia-api.service
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now sopia-api
+#   sudo systemctl status sopia-api
+#   sudo journalctl -u sopia-api -f
+#
+# Adjust User/Group and WorkingDirectory to your server layout.
+
+[Unit]
+Description=SOPIA API (Standard Operating Procedure Intelligent Assistant)
+Documentation=file:/opt/sopia/DEPLOYMENT.md
+After=network-online.target ollama.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=sopia
+Group=sopia
+WorkingDirectory=/opt/sopia/backend
+
+# Uses the project's virtualenv, which owns the installed dependencies.
+# serve.py runs `alembic upgrade head` before starting Uvicorn.
+ExecStart=/opt/sopia/backend/venv/bin/python /opt/sopia/backend/serve.py --host 0.0.0.0 --port 8000 --workers 2
+
+# Configuration (SECRET_KEY, DATABASE_URL, ...) lives in /opt/sopia/.env, which
+# the application reads itself. No EnvironmentFile is needed here.
+
+Restart=always
+RestartSec=5
+
+# Long AI generations on CPU are normal, so allow a graceful stop rather than
+# killing an in-flight request immediately.
+TimeoutStopSec=30
+KillSignal=SIGINT
+
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=sopia-api
+
+# --- Hardening ---------------------------------------------------------------
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=read-only
+# The app must be able to write uploaded documents.
+ReadWritePaths=/var/lib/sopia /opt/sopia/backend
+ProtectKernelTunables=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+
+[Install]
+WantedBy=multi-user.target

@@ -274,3 +274,23 @@ configuration at any time:
 | `Cannot reach the SOPIA API` in the UI | Backend is not running, or `VITE_API_URL` is wrong. |
 | Tailwind classes have no effect | Ensure `@tailwindcss/vite` is in `vite.config.ts` and `index.css` starts with `@import "tailwindcss";`. |
 | `docker-compose up` fails | Docker Desktop is not running. A managed Postgres with pgvector works too — just set `DATABASE_URL`. |
+
+## 18. Deployment
+
+The sections above describe running SOPIA locally. For a single-VM production
+deployment (systemd or Windows service, nginx, TLS, Ollama on the host), follow
+**[DEPLOYMENT.md](./DEPLOYMENT.md)**.
+
+Key differences from local development:
+
+```bash
+cp .env.production.example .env      # then fill in real values
+cd backend && python serve.py        # runs migrations, then Uvicorn on 0.0.0.0
+cp frontend/.env.production.example frontend/.env.production
+cd frontend && npm ci && npm run build   # bakes VITE_API_URL into the bundle
+```
+
+`ENVIRONMENT=production` activates start-up safety checks: the API refuses to
+boot if `SECRET_KEY` is a placeholder, `CORS_ORIGINS` still points only at
+localhost, or `ALLOWED_HOSTS` is `*`. Interactive API docs are also hidden, and
+`GET /ready` reports database readiness for platform health checks.
