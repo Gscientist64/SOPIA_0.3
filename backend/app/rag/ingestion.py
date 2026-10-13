@@ -5,6 +5,7 @@ import logging
 from sqlalchemy.orm import Session
 
 from app.ai.base import AIProviderError
+from app.models.chat import Citation
 from app.models.document import (
     Document,
     DocumentChunk,
@@ -51,9 +52,24 @@ def ingest_document_version(db: Session, version: DocumentVersion) -> Document:
             raise ValueError("Document produced no chunks.")
 
         # Re-ingestion safety: replace any previous chunks for this version.
-        db.query(DocumentChunk).filter(
-            DocumentChunk.document_version_id == version.id
-        ).delete(synchronize_session=False)
+        # Citations keep a foreign key to the chunks they quoted, so a plain
+        # delete fails once an answer has cited this document. The citation row
+        # denormalises the title, version, section and page it needs, so
+        # detaching the chunk reference preserves the citation and only costs the
+        # "view source" deep link for answers given before the re-ingest.
+        stale_ids = [
+            row[0]
+            for row in db.query(DocumentChunk.id)
+            .filter(DocumentChunk.document_version_id == version.id)
+            .all()
+        ]
+        if stale_ids:
+            db.query(Citation).filter(Citation.chunk_id.in_(stale_ids)).update(
+                {Citation.chunk_id: None}, synchronize_session=False
+            )
+            db.query(DocumentChunk).filter(
+                DocumentChunk.document_version_id == version.id
+            ).delete(synchronize_session=False)
         db.commit()
 
         embedder = get_embedding_service()

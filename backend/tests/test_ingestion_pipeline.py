@@ -52,6 +52,63 @@ def test_upload_extracts_chunks_and_marks_ready(client, admin, db):
     assert any(c.section for c in chunks)
 
 
+def test_reingesting_a_cited_version_does_not_fail(client, admin, db):
+    """Re-ingestion must survive chunks that an answer has already cited.
+
+    Citation.chunk_id is a foreign key, so deleting a version's chunks raised a
+    ForeignKeyViolation as soon as any answer had cited them. The delete failed
+    mid-ingest and left the document in ``Error`` — which silently removes it
+    from retrieval — so this is checked from both ends.
+    """
+    from app.models.chat import Citation, Conversation, Message, MessageRole
+    from app.models.document import Document, DocumentStatus, ProcessingStatus
+    from app.rag.ingestion import ingest_document_version
+
+    body = upload(client, admin["headers"]).json()
+    document = db.query(Document).filter(Document.id == body["id"]).one()
+    version = db.query(DocumentVersion).filter(DocumentVersion.id == body["versions"][0]["id"]).one()
+
+    # Read the id rather than the object: ingestion deletes these rows, and
+    # holding a reference would leave a stale entry in the identity map.
+    chunk_id = (
+        db.query(DocumentChunk.id).filter_by(document_version_id=version.id).limit(1).scalar()
+    )
+    conversation = Conversation(user_id=admin["id"], title="Re-ingest check")
+    db.add(conversation)
+    db.flush()
+    message = Message(
+        conversation_id=conversation.id,
+        role=MessageRole.ASSISTANT,
+        content="Answer",
+        mode="SOP_MODE",
+    )
+    db.add(message)
+    db.flush()
+    db.add(
+        Citation(
+            message_id=message.id,
+            document_id=document.id,
+            document_version_id=version.id,
+            chunk_id=chunk_id,
+            document_title=document.title,
+        )
+    )
+    db.commit()
+
+    ingest_document_version(db, version)
+
+    db.refresh(version)
+    db.refresh(document)
+    assert version.processing_status == ProcessingStatus.READY, version.processing_error
+    assert document.status == DocumentStatus.ACTIVE
+    assert db.query(DocumentChunk).filter_by(document_version_id=version.id).count() > 0
+
+    # The citation survives; only its pointer into the replaced chunks is dropped.
+    kept = db.query(Citation).filter_by(message_id=message.id).one()
+    assert kept.document_title == document.title
+    assert kept.chunk_id is None
+
+
 def test_upload_rejects_unsupported_file_type(client, admin):
     response = upload(client, admin["headers"], filename="bad.exe", content=b"MZ")
     assert response.status_code == 400
