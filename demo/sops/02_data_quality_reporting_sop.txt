@@ -1,0 +1,45 @@
+DATA QUALITY AND MONTHLY REPORTING SOP
+Document code: MER-004
+Version: 2.0
+Department: Monitoring and Evaluation
+Effective date: 2025-03-01
+Review date: 2026-03-01
+
+1. PURPOSE
+This procedure defines how programme data is collected, verified, corrected and
+reported each month, and who is accountable at each step.
+
+2. DEFINITIONS
+2.1 A data element is a single field recorded at the point of service delivery.
+2.2 A data quality check is the comparison of recorded values against the source
+document.
+2.3 A variance is any difference greater than five per cent between reported and
+verified values.
+
+3. DATA COLLECTION
+3.1 Field officers must record data on the day the service is delivered.
+3.2 Paper registers must be transcribed into the system within three working days.
+3.3 Data must not be estimated. Where a value is unknown, it must be recorded as
+unknown rather than left blank or guessed.
+
+4. VERIFICATION
+4.1 The M&E officer must verify a random sample of at least ten per cent of records
+each month.
+4.2 Verification must be documented, naming the verifier and the date.
+4.3 Where a variance greater than five per cent is found, a corrective action log
+must be opened.
+
+5. CORRECTIONS
+5.1 Corrections must never overwrite the original value. Both the original and
+corrected value must remain visible with the reason for change.
+5.2 The reason for any correction must be recorded.
+5.3 Correction requests must be approved by the M&E officer.
+
+6. REPORTING TIMELINES
+6.1 Facility reports are due by the fifth working day of the following month.
+6.2 District reports are due by the tenth working day.
+6.3 National reports are due by the fifteenth working day.
+6.4 Late submissions must be accompanied by a written explanation.
+
+7. DATA RETENTION
+7.1 Programme data must be retained for ten years.

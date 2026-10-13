@@ -301,3 +301,34 @@ def no_grounding(monkeypatch):
     from app.rag import grounding
 
     monkeypatch.setattr(grounding, "retrieve_grounding", lambda *a, **k: [])
+
+
+@pytest.fixture
+def fake_embeddings(monkeypatch):
+    """A deterministic content-sensitive embedder for retrieval tests.
+
+    The Ollama stub returns the *same* vector for every input, which makes all
+    chunks equally similar and would hide ranking bugs. This one varies with the
+    text, so similarity ordering is meaningful, and it needs no provider.
+    """
+    import re
+
+    import app.rag.retrieval as retrieval
+
+    token = re.compile(r"[a-z0-9]+")
+
+    def embed(text: str) -> list[float]:
+        vector = [0.0] * EMBED_DIM
+        for tok in token.findall((text or "").lower()):
+            vector[sum(ord(c) for c in tok) % EMBED_DIM] += 1.0
+        return vector
+
+    class _Service:
+        dimension = EMBED_DIM
+        model_name = "test-embedder"
+
+        def embed(self, text: str) -> list[float]:
+            return embed(text)
+
+    monkeypatch.setattr(retrieval, "get_embedding_service", lambda: _Service())
+    return embed

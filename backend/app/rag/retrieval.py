@@ -4,6 +4,14 @@ Combines pgvector cosine similarity with a lightweight keyword-overlap signal
 and applies organization / status / active-version metadata filters. The scoring
 is deliberately simple but structured so a stronger reranker can be dropped in
 later without changing callers.
+
+Two vector-search backends are supported so the same pipeline can run without
+PostgreSQL (offline/demo builds and the test suite):
+
+* PostgreSQL + pgvector orders by ``cosine_distance`` in SQL.
+* Any other dialect (SQLite) loads the filtered candidates and scores them in
+  Python. That is exact rather than approximate and is fine for demo-sized
+  corpora; it is not intended for large knowledge bases.
 """
 
 import logging
@@ -51,6 +59,88 @@ def _keyword_overlap(query_terms: set[str], content: str) -> float:
     return len(query_terms & content_terms) / len(query_terms)
 
 
+def _cosine_distance(left, right) -> float:
+    """Cosine distance between two vectors, computed in Python.
+
+    Used by the non-PostgreSQL path. Embeddings survive a round-trip through
+    SQLite as a JSON-decoded array, so they arrive here as a sequence of floats.
+    """
+    try:
+        a = [float(x) for x in left]
+        b = [float(x) for x in right]
+    except (TypeError, ValueError):
+        return 1.0
+    if len(a) != len(b) or not a:
+        return 1.0
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(y * y for y in b) ** 0.5
+    if norm_a == 0.0 or norm_b == 0.0:
+        return 1.0
+    # Clamp for floating-point drift so similarity stays within [-1, 1].
+    similarity = max(-1.0, min(1.0, dot / (norm_a * norm_b)))
+    return 1.0 - similarity
+
+
+def _uses_pgvector(db: Session) -> bool:
+    """True when the bound database can do vector search in SQL."""
+    try:
+        return db.get_bind().dialect.name == "postgresql"
+    except Exception:  # noqa: BLE001 - treat anything unexpected as "no pgvector"
+        return False
+
+
+def _filtered_query(
+    db: Session,
+    org_id: int | None,
+    document_ids: list[int] | None,
+    department: str | None,
+    doc_type: str | None,
+):
+    """The metadata filters every backend applies.
+
+    Only the active version of ``ready``, ``Active`` documents in the caller's
+    organisation can ever match.
+    """
+    q = (
+        db.query(DocumentChunk, Document, DocumentVersion)
+        .join(Document, Document.id == DocumentChunk.document_id)
+        .join(DocumentVersion, DocumentVersion.id == DocumentChunk.document_version_id)
+        .filter(DocumentChunk.embedding.isnot(None))
+        .filter(DocumentVersion.processing_status == "ready")
+        .filter(DocumentVersion.is_active.is_(True))
+        .filter(Document.status == DocumentStatus.ACTIVE)
+    )
+    if org_id is not None:
+        q = q.filter(Document.organization_id == org_id)
+    if document_ids:
+        q = q.filter(DocumentChunk.document_id.in_(document_ids))
+    if department:
+        q = q.filter(Document.department == department)
+    if doc_type:
+        q = q.filter(Document.doc_type == doc_type)
+    return q
+
+
+def _candidates(
+    db: Session, q, query_vector: list[float], fetch_limit: int
+) -> list[tuple[DocumentChunk, Document, DocumentVersion, float]]:
+    """Return ``(chunk, document, version, cosine_distance)``, nearest first."""
+    if _uses_pgvector(db):
+        distance = DocumentChunk.embedding.cosine_distance(query_vector).label("distance")
+        rows = q.add_columns(distance).order_by(distance).limit(fetch_limit).all()
+        return [(chunk, document, version, float(dist)) for chunk, document, version, dist in rows]
+
+    # Exact search: score the filtered rows in Python. Bounded by the corpus, so
+    # only suitable for the demo/offline deployments this path exists for.
+    scored = [
+        (chunk, document, version, _cosine_distance(chunk.embedding, query_vector))
+        for chunk, document, version in q.all()
+    ]
+    scored.sort(key=lambda row: row[3])
+    return scored[:fetch_limit]
+
+
 def retrieve(
     query: str,
     db: Session,
@@ -79,27 +169,10 @@ def retrieve(
         else getattr(user, "organization_id", None)
     )
 
-    distance = DocumentChunk.embedding.cosine_distance(query_vector).label("distance")
-    q = (
-        db.query(DocumentChunk, Document, DocumentVersion, distance)
-        .join(Document, Document.id == DocumentChunk.document_id)
-        .join(DocumentVersion, DocumentVersion.id == DocumentChunk.document_version_id)
-        .filter(DocumentChunk.embedding.isnot(None))
-        .filter(DocumentVersion.processing_status == "ready")
-        .filter(DocumentVersion.is_active.is_(True))
-        .filter(Document.status == DocumentStatus.ACTIVE)
-    )
-    if org_id is not None:
-        q = q.filter(Document.organization_id == org_id)
-    if document_ids:
-        q = q.filter(DocumentChunk.document_id.in_(document_ids))
-    if department:
-        q = q.filter(Document.department == department)
-    if doc_type:
-        q = q.filter(Document.doc_type == doc_type)
+    q = _filtered_query(db, org_id, document_ids, department, doc_type)
 
     # Fetch a wider candidate set, then rerank with a keyword signal.
-    candidates = q.order_by(distance).limit(max(limit * 4, 20)).all()
+    candidates = _candidates(db, q, query_vector, fetch_limit=max(limit * 4, 20))
 
     query_terms = _terms(query)
     results: list[RetrievedChunk] = []

@@ -1,0 +1,44 @@
+INCIDENT REPORTING AND ESCALATION SOP
+Document code: OPS-011
+Version: 1.4
+Department: Operations
+Effective date: 2025-06-01
+Review date: 2026-06-01
+
+1. PURPOSE
+This procedure defines how staff report, classify and escalate an operational
+incident so that severe events reach management without delay.
+
+2. SEVERITY CLASSIFICATION
+2.1 Severity 1 is any incident that stops service delivery at a facility, or
+involves a risk to life, or involves loss of client data.
+2.2 Severity 2 is any incident that degrades service delivery, or affects more
+than one facility, or affects more than twenty clients.
+2.3 Severity 3 is any other incident with limited or no impact on service
+delivery.
+
+3. REPORTING TIMELINES
+3.1 A Severity 1 incident must be reported immediately by telephone and confirmed
+in writing within one hour.
+3.2 A Severity 2 incident must be reported in writing within four hours.
+3.3 A Severity 3 incident must be reported in writing within two working days.
+
+4. ESCALATION PATH
+4.1 Severity 3 incidents are handled by the facility supervisor.
+4.2 Severity 2 incidents must be escalated to the district operations manager.
+4.3 Severity 1 incidents must be escalated to the national operations director
+and to the Data Protection Officer where client data is involved.
+
+5. INVESTIGATION
+5.1 Every Severity 1 and Severity 2 incident requires a written investigation
+report within ten working days of the incident.
+5.2 The report must state the root cause and the corrective actions taken.
+5.3 Corrective actions must be assigned an owner and a due date.
+
+6. COMMUNICATION
+6.1 Affected clients must be informed of a Severity 1 incident within 48 hours.
+6.2 Internal communication must not attribute blame to an individual before the
+investigation is complete.
+
+7. REVIEW
+7.1 All Severity 1 incidents must be reviewed at the monthly management meeting.

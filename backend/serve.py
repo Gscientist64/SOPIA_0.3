@@ -19,7 +19,10 @@ import sys
 
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BACKEND_DIR)
-os.chdir(BACKEND_DIR)
+# Frozen builds run from a temporary extraction directory, so the current working
+# directory must stay where the operator launched the executable.
+if not getattr(sys, "frozen", False):
+    os.chdir(BACKEND_DIR)
 
 
 def run_migrations() -> None:
@@ -36,6 +39,12 @@ def run_migrations() -> None:
 
 
 def main() -> int:
+    # Required before any multiprocessing when frozen: without it, Uvicorn
+    # spawning workers re-executes the whole program instead of a worker.
+    import multiprocessing
+
+    multiprocessing.freeze_support()
+
     parser = argparse.ArgumentParser(description="Run the SOPIA API in production")
     parser.add_argument("--host", default="0.0.0.0", help="Bind address (default all interfaces)")
     parser.add_argument("--port", type=int, default=8000)
@@ -76,7 +85,14 @@ def main() -> int:
             flush=True,
         )
 
-    if not args.skip_migrations:
+    # Alembic migrations are PostgreSQL-only (they create the vector extension and
+    # drop legacy tables), so a SQLite build schema is created by
+    # scripts/build_demo_db.py instead. Skipping avoids a hard failure at start-up.
+    skip_migrations = args.skip_migrations or settings.DATABASE_URL.startswith("sqlite")
+    if skip_migrations and not args.skip_migrations:
+        print("SQLite database detected; skipping Alembic migrations.", flush=True)
+
+    if not skip_migrations:
         run_migrations()
 
     import uvicorn

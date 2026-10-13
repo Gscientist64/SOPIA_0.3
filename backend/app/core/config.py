@@ -1,10 +1,32 @@
+"""Application configuration, including frozen (PyInstaller) path handling."""
+
+import sys
 from pathlib import Path
 
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+
+def _resolve_dirs() -> tuple[Path, Path]:
+    """Return ``(app_dir, bundle_dir)`` for source and frozen layouts.
+
+    * ``app_dir`` — writable working directory: holds ``.env``, uploads and the
+      demo database. Next to the executable when frozen, otherwise ``backend/``.
+    * ``bundle_dir`` — read-only resources unpacked by PyInstaller (``_MEIPASS``),
+      otherwise the same as ``app_dir``.
+
+    ``__file__`` points inside the temporary extraction directory when frozen, so
+    deriving paths from it would place uploads somewhere that vanishes on exit.
+    """
+    if getattr(sys, "frozen", False):
+        executable_dir = Path(sys.executable).resolve().parent
+        return executable_dir, Path(getattr(sys, "_MEIPASS", executable_dir))
+    backend_dir = Path(__file__).resolve().parents[2]
+    return backend_dir, backend_dir
+
+
 # backend/app/core/config.py -> parents: [core, app, backend, <project root>]
-BASE_DIR = Path(__file__).resolve().parents[2]
+BASE_DIR, BUNDLE_DIR = _resolve_dirs()
 PROJECT_ROOT = BASE_DIR.parent
 
 # The sample values shipped in .env.example. Booting production with one of these
@@ -59,6 +81,13 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_MB: int = 25
     ALLOWED_EXTENSIONS: str = "pdf,docx,txt,md"
+
+    # --- Frontend (optional) ---
+    # Directory holding the built single-page app. When set, the API serves the
+    # frontend itself, so the whole application is reachable on one URL and one
+    # port. Used by the offline/demo build; in a normal server deployment nginx
+    # serves the SPA instead. Auto-detects `frontend/dist` when left blank.
+    FRONTEND_DIST: str = ""
 
     # --- Chunking ---
     CHUNK_SIZE: int = 1200
@@ -115,6 +144,22 @@ class Settings(BaseSettings):
         if self.ENABLE_API_DOCS is not None:
             return self.ENABLE_API_DOCS
         return not self.is_production
+
+    @property
+    def frontend_dist(self) -> Path | None:
+        """Resolved directory of the built SPA, or ``None`` when not present."""
+        candidates: list[Path] = []
+        if self.FRONTEND_DIST:
+            configured = Path(self.FRONTEND_DIST)
+            candidates.append(configured if configured.is_absolute() else BASE_DIR / configured)
+        # Next to the executable (offline bundle), then the source tree.
+        candidates.append(BASE_DIR / "frontend")
+        candidates.append(PROJECT_ROOT / "frontend" / "dist")
+        candidates.append(BUNDLE_DIR / "frontend")
+        for candidate in candidates:
+            if (candidate / "index.html").is_file():
+                return candidate
+        return None
 
     @model_validator(mode="after")
     def _refuse_unsafe_production(self) -> "Settings":

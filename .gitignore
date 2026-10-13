@@ -42,3 +42,7 @@ Thumbs.db
 
 # --- Tooling artefacts ---
 .kilo/
+
+# --- Offline demo build output (3+ GB, assembled locally) ---
+dist-offline/
+*.spec.bak

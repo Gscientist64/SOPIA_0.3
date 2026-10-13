@@ -107,3 +107,13 @@ def ready():
     )
 
 
+# Registered last so it cannot shadow the API routes above. Optional: absent
+# unless a built frontend is present (or FRONTEND_DIST points at one), which is
+# how the offline/demo build runs the whole app on a single port.
+_frontend_dir = settings.frontend_dist
+if _frontend_dir is not None:
+    from app.api.spa import mount_frontend
+
+    mount_frontend(app, _frontend_dir)
+
+
