@@ -56,6 +56,46 @@ reached for a greeting.
   showing the same complaints twice. It now names the SOP documents behind the
   weakest answers, which is actually actionable.
 
+### Retrieval can reach structural context
+Loading two more SOPs exposed a fabrication bug that predated them. Asking "what
+are the four pillars of PMTCT" returned four invented pillars: the excerpts that
+list them were never retrieved, only a passage saying "it is built on four
+pillars" was, so the model filled the gap.
+
+Three independent causes, each measured:
+
+- **Plurals never matched.** `_terms` had no folding, so the query term "pillars"
+  did not match a chunk labelled "Pillar 1" — the keyword signal scored 0.
+- **Headings were not embedded.** A chunk whose body reads "Low knowledge and
+  risk perception" is only findable as "Pillar 1 (Primary Prevention)" through its
+  heading. Ingestion now embeds heading + section + body; the four pillar chunks
+  moved from outside the top 200 candidates to ranks 2, 6, 7 and 10.
+- **Headings carried no weight in ranking.** Heading overlap now contributes to
+  the blended score, and `TOP_K` moved 5 -> 8 so a list split across sibling
+  chunks can fit at all.
+
+Measured on the real corpus: the answer went from four invented pillars to three
+correct, cited ones.
+
+### Re-ingestion no longer destroys citation history
+Re-embedding the corpus failed and took the knowledge base offline. Ingesting a
+version deletes its chunks first, but citations hold a foreign key to the chunk
+they quoted, so the delete raised a `ForeignKeyViolation`; the documents were left
+in `Error` with `is_active` still true, and since retrieval requires
+`processing_status == "ready"` the whole corpus silently vanished from search.
+
+- Ingestion now detaches citations before deleting their chunks. A citation
+  denormalises the title, version, section and page it shows, so the citation is
+  preserved and only the "view source" deep link is lost for answers given before
+  the re-ingest.
+- `scripts/reembed.py` adds a **new version** instead of rewriting the existing
+  one, copies the file, and activates the new version only after it ingests
+  successfully. A failed run now costs nothing, and the knowledge base stays
+  online for the whole job.
+
+The corpus was re-embedded this way (documents 9-11, 3 328 chunks, ~63 min). All
+111 existing citations still resolve to live chunks: 0 detached, 0 dangling.
+
 ### Production deployment preparation
 The application was ready but there was **no way to deploy it**: no Dockerfile or
 process manager, no reverse-proxy config, a dev-only launcher, and — most
@@ -226,6 +266,14 @@ interview is about the candidate rather than the SOP.
   `python scripts/check_model.py` after switching models.
 - `MIN_RELEVANCE=0.55` is deliberately strict (precision over recall). Lower it
   if legitimate questions are being refused.
+- **Multi-part answers are limited by the model, not by retrieval.** Asking "what are
+  the four pillars of PMTCT" now retrieves three of the four pillar chunks and the
+  answer names them correctly; the fourth is missed because it ranks 10th, just
+  outside `TOP_K=8`. Retrieval *does* surface all four at `TOP_K=10`, but the answer
+  got **worse** there (2 of 4 correct) — extra chunks dilute `qwen2.5:1.5b`'s
+  attention. `TOP_K=8` was chosen because it measured best, not because it is
+  perfect. Fixing this properly needs a larger model or a reranker, and the
+  number of items a question asks for should not be inferred from `TOP_K`.
 - No approximate-nearest-neighbour index (ivfflat/HNSW) is created yet — fine for
   MVP document counts, worth adding for large knowledge bases.
 - Exam/quiz generation depends on the model returning JSON; interview mode has a

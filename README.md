@@ -261,6 +261,17 @@ first active version, ingests it with progress reporting, and skips files it has
 already ingested — so it is safe to re-run. Set `PUBLIC_ORGANIZATION_ID` to the
 same organisation id if guests should be able to search the new documents.
 
+If the embedding text or model changes, existing documents must be embedded
+again. Re-ingesting a version in place destroys the chunks that already answered
+questions, and every answer keeps a reference to the chunk it quoted, so use the
+re-embed script instead — it adds a new version and only activates it once it
+succeeds, leaving the previous version to serve citation history:
+
+```bash
+python scripts/reembed.py --documents 9 10 11
+python scripts/reembed.py --documents 9 10 11 --dry-run
+```
+
 ## 14. Running tests
 
 ```bash

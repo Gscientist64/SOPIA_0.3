@@ -128,6 +128,9 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
 
     # --- Retrieval ---
+    # 8 measured better than 5 (a list split across sibling chunks lost items) and
+    # better than 10 (extra chunks diluted a small model's attention on multi-part
+    # answers). Retrieval is no longer the bottleneck for those questions.
     TOP_K: int = 8
     MIN_RELEVANCE: float = 0.55
 
