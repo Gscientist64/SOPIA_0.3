@@ -18,6 +18,7 @@ from app.rag.prompts import (
     get_system_prompt,
 )
 from app.rag.retrieval import RetrievedChunk, build_context, retrieve
+from app.rag.smalltalk import is_small_talk, reply_to_small_talk
 from app.services.audit import log_ai_call
 
 logger = logging.getLogger(__name__)
@@ -111,35 +112,43 @@ def generate_assistant_message(
     results: list[RetrievedChunk] = []
     error: str | None = None
 
-    if mode == ChatMode.SOP:
-        results = _retrieve(db, user, question, document_ids)
-
-    context = build_context(results) if mode == ChatMode.SOP else ""
-    system_prompt = get_system_prompt(mode)
-    user_prompt = build_user_prompt(question, context)
-
-    if mode == ChatMode.SOP and not results:
-        answer_text = SOP_NO_CONTEXT_ANSWER
+    if mode == ChatMode.SOP and is_small_talk(question):
+        # A greeting is not a question about the organisation, so it must not be
+        # searched for nor receive the compliance refusal meant for unanswered
+        # SOP questions. Checked before retrieval because a short greeting scores
+        # just above MIN_RELEVANCE against unrelated chunks, and that noise is
+        # enough to make the model fall back to the refusal text.
+        answer_text = reply_to_small_talk(question)
     else:
-        try:
-            with log_ai_call(
-                db,
-                provider=provider.name,
-                operation="generate",
-                model=getattr(provider, "model", None),
-                mode=mode,
-                user_id=user.id,
-            ):
-                answer_text = provider.generate(
-                    prompt=user_prompt, system_prompt=system_prompt
+        if mode == ChatMode.SOP:
+            results = _retrieve(db, user, question, document_ids)
+
+        context = build_context(results) if mode == ChatMode.SOP else ""
+        system_prompt = get_system_prompt(mode)
+        user_prompt = build_user_prompt(question, context)
+
+        if mode == ChatMode.SOP and not results:
+            answer_text = SOP_NO_CONTEXT_ANSWER
+        else:
+            try:
+                with log_ai_call(
+                    db,
+                    provider=provider.name,
+                    operation="generate",
+                    model=getattr(provider, "model", None),
+                    mode=mode,
+                    user_id=user.id,
+                ):
+                    answer_text = provider.generate(
+                        prompt=user_prompt, system_prompt=system_prompt
+                    )
+            except AIProviderError as exc:
+                logger.error("AI provider error: %s", exc)
+                error = str(exc)
+                answer_text = (
+                    "I'm sorry, the AI service is currently unavailable, so I can't produce an "
+                    "answer right now. Please try again shortly."
                 )
-        except AIProviderError as exc:
-            logger.error("AI provider error: %s", exc)
-            error = str(exc)
-            answer_text = (
-                "I'm sorry, the AI service is currently unavailable, so I can't produce an "
-                "answer right now. Please try again shortly."
-            )
 
     assistant_message = Message(
         conversation_id=conversation.id,
@@ -233,7 +242,11 @@ def stream_chat(
     yield ("meta", {"conversation_id": conversation_id, "user_message_id": user_message.id})
 
     results: list[RetrievedChunk] = []
-    if mode == ChatMode.SOP:
+    small_talk = mode == ChatMode.SOP and is_small_talk(question)
+    if mode == ChatMode.SOP and not small_talk:
+        # Checked before retrieval: a short greeting scores just above
+        # MIN_RELEVANCE against unrelated chunks, which is enough noise to make
+        # the model fall back to the refusal text instead of saying hello.
         results = _retrieve(db, None, question, document_ids, organization_id)
 
     context = build_context(results) if mode == ChatMode.SOP else ""
@@ -244,7 +257,12 @@ def stream_chat(
     error: str | None = None
 
     try:
-        if mode == ChatMode.SOP and not results:
+        if small_talk:
+            # Answered directly: a greeting needs no retrieval and no model call.
+            greeting = reply_to_small_talk(question)
+            pieces.append(greeting)
+            yield ("delta", greeting)
+        elif mode == ChatMode.SOP and not results:
             pieces.append(SOP_NO_CONTEXT_ANSWER)
             yield ("delta", SOP_NO_CONTEXT_ANSWER)
         else:

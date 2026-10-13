@@ -57,6 +57,56 @@ def test_sop_mode_refuses_without_retrieved_context(client, normal_user, no_cont
     assert body["assistant_message"]["citations"] == []
 
 
+# ------------------------------------------------------------------- small talk
+def test_greeting_is_answered_instead_of_refused(client, normal_user, no_context):
+    body = ask(client, normal_user["headers"], "Hi").json()
+    content = body["assistant_message"]["content"]
+    assert content != SOP_NO_CONTEXT_ANSWER
+    assert "SOPIA" in content
+    assert body["assistant_message"]["citations"] == []
+
+
+def test_greeting_never_reaches_retrieval(client, normal_user, monkeypatch):
+    """A greeting scores just above MIN_RELEVANCE against unrelated chunks, so it
+    must be recognised before the search runs rather than after it comes back."""
+    calls = []
+
+    def _explode(*args, **kwargs):
+        calls.append(args)
+        raise AssertionError("retrieval must not run for a greeting")
+
+    monkeypatch.setattr(chat_service, "retrieve", _explode)
+    body = ask(client, normal_user["headers"], "Hello!").json()
+
+    assert calls == []
+    assert body["assistant_message"]["content"] != SOP_NO_CONTEXT_ANSWER
+
+
+def test_greeting_with_a_real_question_stays_grounded(client, normal_user, with_context):
+    """A pleasantry attached to a real SOP question must still be answered from the SOPs."""
+    body = ask(client, normal_user["headers"], "Hi, what must a client present?").json()
+    message = body["assistant_message"]
+    assert message["content"] != SOP_NO_CONTEXT_ANSWER
+    assert message["citations"], "expected the question to be answered from the SOPs"
+
+
+def test_greeting_streams_without_calling_the_model(client, normal_user, monkeypatch):
+    def _explode(*args, **kwargs):
+        raise AssertionError("retrieval must not run for a greeting")
+
+    monkeypatch.setattr(chat_service, "retrieve", _explode)
+    with client.stream(
+        "POST",
+        "/api/v1/chat/stream",
+        headers=normal_user["headers"],
+        json={"message": "thanks", "mode": "SOP_MODE"},
+    ) as response:
+        text = "".join(response.iter_text())
+
+    assert "You're welcome" in text
+    assert SOP_NO_CONTEXT_ANSWER not in text
+
+
 # ------------------------------------------------------------------------ grounded
 def test_sop_answer_is_grounded_and_cited(client, normal_user, with_context):
     response = ask(client, normal_user["headers"], "What must a client present?")

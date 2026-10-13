@@ -88,6 +88,7 @@ cp .env.example .env
 | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBED_MODEL` | Gemini settings |
 | `EMBEDDING_DIM` | **Must match the embedding model output** (1024 for `mxbai-embed-large`, 768 for Gemini `text-embedding-004`) |
 | `UPLOAD_DIR`, `MAX_UPLOAD_MB`, `ALLOWED_EXTENSIONS` | Upload controls |
+| `PUBLIC_ORGANIZATION_ID` | Organisation whose SOPs anonymous visitors may search. Blank disables login-free access. |
 | `CHUNK_SIZE`, `CHUNK_OVERLAP` | Chunking controls |
 | `TOP_K`, `MIN_RELEVANCE` | Retrieval controls |
 
@@ -200,7 +201,22 @@ npm run dev                   # http://localhost:5173
 ollama serve
 ```
 
-### Create your first account
+### Accounts and access
+
+SOPIA opens straight into the assistant, like a normal chat app. **No account is
+needed** to use the assistant or interview practice.
+
+| Role | Chat (SOP assistant) | Interview practice | Learn / Exams / Progress | Knowledge base & admin |
+|------|:---:|:---:|:---:|:---:|
+| Guest (no account) | ✅ | ✅ | — | — |
+| Registered user | ✅ | ✅ | ✅ | — |
+| Admin | ✅ | ✅ | ✅ | ✅ |
+
+Guests search **one designated organisation**: set `PUBLIC_ORGANIZATION_ID` to
+that organisation's id. Leave it blank to disable anonymous access entirely and
+require a login. Guests are confined to that organisation's published documents
+by the same organisation scoping used for every other role, and can still open
+the source behind a citation — that is the point of the product.
 
 The **first account registered through the UI becomes `SUPER_ADMIN`**. To create
 or promote an account from the command line:
@@ -211,13 +227,27 @@ python scripts/create_admin.py --email admin@example.com --password 'Str0ngPass!
 python scripts/create_admin.py --email user@example.com  --password 'Str0ngPass!' --role USER
 ```
 
-Then sign in at <http://localhost:5173/login>.
+Register or sign in at <http://localhost:5173/login>.
+
+### Interview practice
+
+Interviews escalate: each session opens with warm-up questions and ends on
+something demanding, and the candidate sees **a stronger answer** after every
+reply alongside a 1–5 score, what worked, and an optional detail panel. Question
+generation is grounded in the SOPs when the knowledge base covers the role, and
+degrades to general questions when it does not — an interview is about the
+candidate, so a thin knowledge base must not block practice (unlike quizzes and
+exams, which refuse rather than invent).
+
+Questions escalate from the model's own difficulty label; if the model omits it,
+a positional fallback keeps the progression predictable. The summary lists the
+SOP documents behind the weakest answers as topics to revisit.
 
 ## 14. Running tests
 
 ```bash
 cd backend
-python -m pytest                    # 99 hermetic tests (no DB or Ollama needed)
+python -m pytest                    # hermetic tests (no DB or Ollama needed)
 python scripts/check_model.py       # 4 behaviour checks for the configured model
 python scripts/e2e_test.py          # 37 live checks (needs DB + Ollama running)
 ```

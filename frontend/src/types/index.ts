@@ -164,6 +164,8 @@ export interface InterviewQuestion {
   order_index: number;
   prompt: string;
   question_type: string;
+  /** Position in the warm-up -> medium -> challenging progression. */
+  difficulty?: string | null;
   citations?: Citation[];
 }
 

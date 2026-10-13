@@ -21,6 +21,8 @@ class InterviewQuestionOut(BaseModel):
     order_index: int
     prompt: str
     question_type: str
+    # Where this question sits in the warm-up -> challenging progression.
+    difficulty: str | None = None
     # The SOP excerpts this question was generated from (empty when the knowledge
     # base had nothing relevant for the role).
     citations: list[CitationOut] = []
@@ -30,6 +32,8 @@ class InterviewStartResponse(BaseModel):
     session_id: int
     job_title: str
     question: InterviewQuestionOut
+    # Total number of questions in this session, so the UI can show progress.
+    total_questions: int = 0
 
 
 class InterviewAnswerRequest(BaseModel):
@@ -41,6 +45,7 @@ class InterviewAnswerResponse(BaseModel):
     feedback: dict[str, Any] = {}
     score: int | None = None
     next_question: InterviewQuestionOut | None = None
+    total_questions: int = 0
     done: bool = False
     summary: dict[str, Any] | None = None
 

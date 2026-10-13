@@ -48,8 +48,40 @@ def _question_out(question: InterviewQuestion) -> InterviewQuestionOut:
         order_index=question.order_index,
         prompt=question.prompt,
         question_type=question.question_type,
+        difficulty=question.difficulty,
         citations=sources_to_dicts(question.sources),
     )
+
+
+_QUESTION_TYPES = {"behavioral", "technical", "competency", "situational"}
+
+
+def _normalise_question_type(value: str | None, fallback: str) -> str:
+    """Keep ``question_type`` to a known vocabulary.
+
+    Smaller local models sometimes copy the difficulty label into this field,
+    which would show a nonsense badge like "warm-up" in the UI.
+    """
+    candidate = (value or "").strip().lower()
+    if candidate in _QUESTION_TYPES:
+        return candidate
+    return fallback if fallback in _QUESTION_TYPES else "behavioral"
+
+
+def _difficulty_for(index: int, total: int) -> str:
+    """Fallback progression when the model does not label a question itself.
+
+    Positional, so the interview still escalates predictably even if the model
+    omits the field.
+    """
+    if total <= 1:
+        return "warm-up"
+    position = index / (total - 1)
+    if position < 0.34:
+        return "warm-up"
+    if position < 0.67:
+        return "medium"
+    return "challenging"
 
 
 def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> tuple[list[dict], str | None]:
@@ -76,8 +108,11 @@ def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> t
         f"Industry: {payload.industry or 'general'}\n"
         f"Experience level: {payload.experience_level or 'mid-level'}\n"
         f"Interview type: {payload.interview_type}\n"
-        f"Focus topics: {payload.topics or 'general role fit'}\n"
-        'Respond ONLY with a JSON array of objects with keys "prompt" and "question_type".'
+        f"Focus topics: {payload.topics or 'general role fit'}\n\n"
+        "Order them as a progression: question 1 the easiest warm-up, question 5 the most "
+        "demanding, each one building on the last.\n"
+        'Respond ONLY with a JSON array of objects with keys "prompt", "question_type" and '
+        '"difficulty" (one of "warm-up", "medium" or "challenging").'
     )
     prompt = build_interview_prompt(instruction, context)
 
@@ -91,7 +126,10 @@ def _generate_questions(provider, db, user, payload: InterviewStartRequest) -> t
     except AIProviderError as exc:
         logger.warning("Interview question generation failed: %s", exc)
     return (
-        [{"prompt": q, "question_type": "behavioral"} for q in _FALLBACK_QUESTIONS],
+        [
+            {"prompt": q, "question_type": "behavioral", "difficulty": _difficulty_for(i, len(_FALLBACK_QUESTIONS))}
+            for i, q in enumerate(_FALLBACK_QUESTIONS)
+        ],
         sources_json,
     )
 
@@ -125,7 +163,10 @@ def start_interview(
             session_id=session.id,
             order_index=index,
             prompt=(item.get("prompt") or "").strip(),
-            question_type=item.get("question_type") or "behavioral",
+            question_type=_normalise_question_type(
+                item.get("question_type"), payload.interview_type
+            ),
+            difficulty=(item.get("difficulty") or "").strip() or _difficulty_for(index, len(items)),
             sources=sources_json,
         )
         db.add(question)
@@ -140,6 +181,7 @@ def start_interview(
         session_id=session.id,
         job_title=session.job_title,
         question=_question_out(first),
+        total_questions=len(items),
     )
 
 
@@ -221,9 +263,57 @@ def answer_question(
         feedback=feedback,
         score=score,
         next_question=_question_out(next_question) if next_question else None,
+        total_questions=len(question),
         done=next_question is None,
         summary=summary,
     )
+
+
+def _dedupe(values: list[str], limit: int) -> list[str]:
+    """Drop repeats, case-insensitively, keeping first-seen order.
+
+    Feedback from several questions restates the same point with different
+    capitalisation, which made the summary read as a noisy wall of near-repeats.
+    """
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        key = value.strip().lower()
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        result.append(value.strip())
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _recommended_topics(session: InterviewSession) -> list[str]:
+    """Documents to revisit, taken from the SOPs behind the weakest answers.
+
+    Previously this list was a verbatim copy of ``weak_areas``, so the summary
+    showed the same complaints twice. Pointing at the source document instead
+    gives the candidate something concrete to re-read.
+    """
+    documents: list[str] = []
+    for question in session.questions:
+        answer = question.answer
+        if answer is None or (answer.score is not None and answer.score >= 3):
+            continue
+        try:
+            sources = json.loads(question.sources or "[]")
+        except json.JSONDecodeError:
+            sources = []
+        for source in sources if isinstance(sources, list) else []:
+            if isinstance(source, dict):
+                title = (source.get("document_title") or "").strip()
+                if title:
+                    documents.append(title)
+    if not documents:
+        fallback = session.topics or session.job_title
+        if fallback:
+            documents.append(str(fallback).strip())
+    return _dedupe(documents, 5)
 
 
 def _summarise(session: InterviewSession) -> dict:
@@ -242,10 +332,10 @@ def _summarise(session: InterviewSession) -> dict:
         if not question.answer.score or question.answer.score < 3:
             difficult.append(question.prompt)
     return {
-        "strengths": list(dict.fromkeys(strengths))[:6],
-        "weak_areas": list(dict.fromkeys(weaknesses))[:6],
+        "strengths": _dedupe(strengths, 6),
+        "weak_areas": _dedupe(weaknesses, 6),
         "difficult_questions": difficult[:5],
-        "recommended_topics": list(dict.fromkeys(weaknesses))[:5],
+        "recommended_topics": _recommended_topics(session),
         "questions_answered": len([q for q in session.questions if q.answer is not None]),
     }
 

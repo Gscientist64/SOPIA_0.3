@@ -1,8 +1,60 @@
 # SOPIA — Project Status
 
-_Last updated: 2026-10-08_
+_Last updated: 2026-10-13_
 
 ## Completed
+
+### Login-free access, with roles that mean something
+SOPIA previously demanded an account before showing anything, which is the wrong
+first impression for a chat product. It now opens straight into the assistant,
+and access is granted by role:
+
+| Role | Chat | Interview | Learn / Exams / Progress | Knowledge base & admin |
+|------|:---:|:---:|:---:|:---:|
+| Guest (no account) | ✅ | ✅ | — | — |
+| Registered user | ✅ | ✅ | ✅ | — |
+| Admin | ✅ | ✅ | ✅ | ✅ |
+
+- `RoleEnum.GUEST` plus `POST /auth/guest` issue a normal JWT for an anonymous
+  visitor, so every existing organisation-scoped query keeps working unchanged.
+- Guests are scoped to **one designated organisation** via
+  `PUBLIC_ORGANIZATION_ID`; blank disables login-free access entirely.
+- `require_member` / `MemberUser` gate learning, exams, progress and dashboards;
+  document management is admin-only, but **opening the source behind a citation
+  stays open to everyone** — that is the product's whole point.
+- The frontend bootstraps a guest on first load, filters navigation by access,
+  and guards member-only routes.
+- The theme is pink throughout (129 class replacements across 13 files), with a
+  matching favicon and `theme-color`.
+
+### Greetings no longer trigger the compliance refusal
+A "Hi" produced *"I couldn't find this in the available SOPs…"* — the correct
+refusal for an unanswerable SOP question, and completely wrong for a greeting.
+The root cause was ordering: `MIN_RELEVANCE=0.55` is permissive enough that a
+short greeting retrieves unrelated chunks at ~0.60, so retrieval "succeeded" and
+the refusal came from the model, not from the empty-context branch.
+
+`app/rag/smalltalk.py` now recognises greetings, thanks, goodbyes and capability
+questions **before retrieval runs**, and answers them directly. The rule is
+deliberately conservative — every word must be a pleasantry and the message must
+be ≤ 8 words — so *"Hi, what is the registration procedure?"* still goes to the
+SOPs. Covered by five tests, including one that fails if retrieval is ever
+reached for a greeting.
+
+### Interview practice is progressive and shows a model answer
+- Questions now carry a `difficulty` (migration `0004_interview_difficulty`) and
+  escalate: warm-up → medium → challenging. The prompt asks the model to order
+  them, and `_difficulty_for` provides a positional fallback so the progression
+  holds even when a small model omits the label (verified both ways).
+- Feedback always includes a **first-person model answer** — verified to be
+  genuinely better than the input, not an echo: answering "I just do my job and
+  report what I find" scored 1/5 and produced a concrete, role-specific answer.
+- The feedback card leads with the score and what worked, gives the model answer
+  a prominent panel, and tucks accuracy/clarity/relevance behind a collapsed
+  "Show more detail" so the page reads calmly instead of as a wall of text.
+- The summary previously listed `weak_areas` **verbatim as `recommended_topics`**,
+  showing the same complaints twice. It now names the SOP documents behind the
+  weakest answers, which is actually actionable.
 
 ### Production deployment preparation
 The application was ready but there was **no way to deploy it**: no Dockerfile or
@@ -126,7 +178,7 @@ interview is about the candidate rather than the SOP.
   Learn, Exams, Interviews, Administration pages.
 
 ### Tests
-- **99 pytest tests passing** (`cd backend && python -m pytest`).
+- **119 pytest tests passing** (`cd backend && python -m pytest`).
 - **37/37 end-to-end checks passing** (`python scripts/e2e_test.py`) against real
   Postgres + pgvector + Ollama: auth, RBAC, upload→chunk→embed, grounded answers,
   citations, refusal, injection resistance, streaming, conversations, learning,
@@ -146,9 +198,15 @@ interview is about the candidate rather than the SOP.
 ## Known Issues & Limitations
 - **The database password previously present in `.env` must be rotated** in the
   database provider. Removing a file does not invalidate an exposed credential.
-- `backend/login.txt` holds the admin password in clear text and is **not**
-  covered by `.gitignore`. Delete it or add it to `.gitignore` before initialising
-  a git repository..- pgvector similarity search is PostgreSQL-specific, so it is **not** covered by
+- `backend/login.txt` holds the admin password in clear text. It is covered by
+  `.gitignore` and must never be committed.
+- Guest rows are never pruned. They are cheap, but a public deployment should add
+  a periodic cleanup of expired guest accounts before real traffic arrives.
+- Short greetings used to be answered from unrelated chunks because
+  `MIN_RELEVANCE=0.55` lets ~0.60 noise through. Small talk is now handled before
+  retrieval, but the underlying margin is still thin: a genuinely vague question
+  can retrieve marginally relevant chunks and be answered instead of refused.
+- pgvector similarity search is PostgreSQL-specific, so it is **not** covered by
   pytest (which uses SQLite). It is covered by `scripts/e2e_test.py` instead.
 - Document ingestion is synchronous inside the upload request. Embedding is the
   bottleneck on CPU: a 478-page PDF (~2 500 chunks) needs roughly **75 minutes**

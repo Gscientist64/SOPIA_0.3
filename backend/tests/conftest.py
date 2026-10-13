@@ -123,7 +123,7 @@ def _chat_reply(system: str, user: str) -> str:
     lowered = f"{system}\n{user}".lower()
     if "assessment author" in lowered:
         return QUESTIONS_JSON
-    if "examiner" in lowered:
+    if "feedback on a candidate's answer" in lowered:
         return FEEDBACK_JSON
     if "learning outline" in lowered:
         return OUTLINE_JSON

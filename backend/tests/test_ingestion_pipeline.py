@@ -123,11 +123,16 @@ def test_delete_document_removes_versions_and_chunks(client, admin, db):
     assert db.query(DocumentChunk).filter_by(document_id=document_id).count() == 0
 
 
-def test_normal_user_only_sees_active_documents(client, admin, normal_user):
+def test_document_management_is_admin_only(client, admin, normal_user):
+    """Members reach Chat/Learn/Exams/Interviews/Progress, not the knowledge base."""
     upload(client, admin["headers"])
-    response = client.get("/api/v1/documents/", headers=normal_user["headers"])
-    assert response.status_code == 200
-    assert all(doc["status"] == "Active" for doc in response.json())
+
+    forbidden = client.get("/api/v1/documents/", headers=normal_user["headers"])
+    assert forbidden.status_code == 403
+
+    allowed = client.get("/api/v1/documents/", headers=admin["headers"])
+    assert allowed.status_code == 200
+    assert all(doc["status"] == "Active" for doc in allowed.json())
 
 
 # --------------------------------------------- citation "view source" endpoint

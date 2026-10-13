@@ -128,9 +128,12 @@ class GeminiProvider(AIProvider):
 
     def evaluate_answer(self, question: str, answer: str, context: str = "") -> dict[str, Any]:
         system = (
-            "You are an expert examiner evaluating a candidate's answer. "
-            "Respond ONLY with valid JSON using the keys: strengths, weaknesses, "
-            "missing_points, clarity, accuracy, relevance, suggested_answer, follow_up."
+            "You are an expert interviewer giving feedback on a candidate's answer. "
+            "Respond ONLY with valid JSON using exactly these keys: score (integer 1-5), "
+            "strengths, weaknesses, missing_points, clarity, accuracy, relevance, "
+            "suggested_answer, follow_up. Keep every list to at most three short items, and "
+            "always provide suggested_answer as a strong first-person version of the answer. "
+            "clarity, accuracy and relevance are assessments of the answer, never quotations of it."
         )
         prompt = f"Question:\n{question}\n\nCandidate answer:\n{answer}\n"
         if context:

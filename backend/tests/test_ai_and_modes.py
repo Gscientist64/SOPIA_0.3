@@ -354,6 +354,7 @@ def test_interview_flow_returns_feedback_and_summary(client, normal_user, no_gro
     assert start.status_code == 200, start.text
     session_id = start.json()["session_id"]
     assert start.json()["question"]["prompt"]
+    assert start.json()["total_questions"] == 2
 
     first = client.post(
         f"/api/v1/interviews/{session_id}/answer",
@@ -373,6 +374,30 @@ def test_interview_flow_returns_feedback_and_summary(client, normal_user, no_gro
     body = second.json()
     assert body["done"] is True
     assert body["summary"]["questions_answered"] == 2
+
+
+def test_interview_questions_escalate_and_expose_a_model_answer(client, normal_user, no_grounding):
+    """Difficulty must come from the model, or fall back to a positional progression."""
+    start = client.post(
+        "/api/v1/interviews/start",
+        headers=normal_user["headers"],
+        json={"job_title": "Data Analyst", "interview_type": "mixed"},
+    ).json()
+    session_id = start["session_id"]
+    assert start["question"]["difficulty"] == "warm-up"
+
+    answer = client.post(
+        f"/api/v1/interviews/{session_id}/answer",
+        headers=normal_user["headers"],
+        json={"answer": "Short answer."},
+    ).json()
+
+    # The fake provider returns questions without a difficulty label, so the
+    # positional fallback must still escalate rather than repeating "warm-up".
+    assert answer["next_question"]["difficulty"] == "challenging"
+    assert answer["feedback"]["suggested_answer"] == "Add measurable outcomes."
+    # The fake provider omits a score, so it must surface as "unscored" not 0.
+    assert answer["score"] is None
 
 
 def test_interview_answering_beyond_last_question_is_rejected(client, normal_user, no_grounding):

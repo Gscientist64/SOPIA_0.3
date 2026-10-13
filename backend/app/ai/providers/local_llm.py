@@ -161,11 +161,18 @@ class LocalLLMProvider(AIProvider):
     # ------------------------------------------------------------ evaluations
     def evaluate_answer(self, question: str, answer: str, context: str = "") -> dict[str, Any]:
         system = (
-            "You are an expert examiner evaluating a candidate's answer. "
-            "Respond ONLY with valid JSON using the keys: "
-            "strengths (list of strings), weaknesses (list), missing_points (list), "
-            "clarity (string), accuracy (string), relevance (string), "
-            "suggested_answer (string), follow_up (string)."
+            "You are an expert interviewer giving feedback on a candidate's answer. "
+            "Respond ONLY with valid JSON using exactly these keys: "
+            "score (integer 1-5), strengths (list of short strings), "
+            "weaknesses (list of short strings), missing_points (list of short strings), "
+            "clarity (one short sentence), accuracy (one short sentence), "
+            "relevance (one short sentence), "
+            "suggested_answer (a strong version of the answer, written in the first person "
+            "as the candidate would say it - this is the most important field), "
+            "follow_up (one short sentence).\n"
+            "clarity, accuracy and relevance are assessments of the answer, never a quotation "
+            "of it - say how well it did, not what it said.\n"
+            "Keep every list to at most three short items. Lead with what worked."
         )
         prompt = f"Question:\n{question}\n\nCandidate answer:\n{answer}\n"
         if context:

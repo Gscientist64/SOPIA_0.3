@@ -6,6 +6,7 @@ import { api, errorMessage } from "../services/api";
 import type { InterviewQuestion, InterviewSession } from "../types";
 
 interface Feedback {
+  score?: number;
   strengths?: string[];
   weaknesses?: string[];
   missing_points?: string[];
@@ -43,6 +44,7 @@ export default function Interviews() {
 
   const [session, setSession] = useState<InterviewSession | null>(null);
   const [current, setCurrent] = useState<InterviewQuestion | null>(null);
+  const [total, setTotal] = useState(0);
   const [answer, setAnswer] = useState("");
   const [entries, setEntries] = useState<Entry[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
@@ -65,6 +67,7 @@ export default function Interviews() {
       });
       setSession({ id: data.session_id, job_title: data.job_title, interview_type: type, status: "active" });
       setCurrent(data.question);
+      setTotal(data.total_questions ?? 0);
       setAnswer("");
     } catch (err) {
       setError(errorMessage(err));
@@ -94,6 +97,7 @@ export default function Interviews() {
         }
       } else {
         setCurrent(data.next_question);
+        if (data.total_questions) setTotal(data.total_questions);
       }
     } catch (err) {
       setError(errorMessage(err));
@@ -109,7 +113,8 @@ export default function Interviews() {
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">Interview practice</h1>
       </div>
       <p className="mt-1 text-sm text-slate-500">
-        Practise a realistic interview and receive structured feedback on every answer.
+        Practise a realistic interview that gets harder as you go, and see a stronger
+        answer after every reply.
       </p>
 
       {error && (
@@ -194,32 +199,17 @@ export default function Interviews() {
       <div className="mt-4 space-y-4">
         {entries.map((entry, i) => (
           <div key={i} className="space-y-2">
-            <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
-              <p className="font-medium text-slate-700">{entry.question.prompt}</p>
-              <Sources citations={entry.question.citations} className="mt-2" />
-            </div>
+            <QuestionBubble question={entry.question} />
             <div className="flex justify-end">
               <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-pink-600 px-4 py-2.5 text-sm text-white">
                 {entry.answer}
               </div>
             </div>
-            {entry.feedback && (
-              <div className="rounded-2xl border border-indigo-100 bg-indigo-50/50 px-4 py-3 text-sm">
-                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-indigo-500">
-                  Feedback
-                </p>
-                <Markdown content={formatFeedback(entry.feedback)} />
-              </div>
-            )}
+            {entry.feedback && <FeedbackCard feedback={entry.feedback} />}
           </div>
         ))}
 
-        {current && (
-          <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
-            <p className="font-medium text-slate-700">{current.prompt}</p>
-            <Sources citations={current.citations} className="mt-2" />
-          </div>
-        )}
+        {current && <QuestionBubble question={current} total={total} />}
 
         {busy && (
           <div className="flex items-center gap-2 text-sm text-slate-400">
@@ -299,19 +289,144 @@ function SummaryList({
   );
 }
 
-function formatFeedback(feedback: Feedback): string {
-  if (feedback.feedback && !feedback.strengths) return feedback.feedback;
-  const lines: string[] = [];
-  const list = (label: string, values?: string[]) => {
-    if (values && values.length) lines.push(`**${label}:** ${values.join("; ")}`);
-  };
-  list("Strengths", feedback.strengths);
-  list("Missing points", feedback.missing_points);
-  list("Weaknesses", feedback.weaknesses);
-  if (feedback.accuracy) lines.push(`**Technical accuracy:** ${feedback.accuracy}`);
-  if (feedback.clarity) lines.push(`**Clarity:** ${feedback.clarity}`);
-  if (feedback.relevance) lines.push(`**Relevance:** ${feedback.relevance}`);
-  if (feedback.suggested_answer) lines.push(`**Suggested answer:** ${feedback.suggested_answer}`);
-  if (feedback.follow_up) lines.push(`**Follow-up:** ${feedback.follow_up}`);
-  return lines.join("\n\n") || "No feedback returned.";
+const DIFFICULTY_STYLE: Record<string, string> = {
+  "warm-up": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  medium: "bg-amber-50 text-amber-700 border-amber-200",
+  challenging: "bg-rose-50 text-rose-700 border-rose-200",
+};
+
+function DifficultyBadge({ difficulty }: { difficulty?: string | null }) {
+  if (!difficulty) return null;
+  const label = difficulty === "warm-up" ? "Warm-up" : difficulty[0].toUpperCase() + difficulty.slice(1);
+  return (
+    <span
+      className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+        DIFFICULTY_STYLE[difficulty.toLowerCase()] ?? "bg-slate-50 text-slate-600 border-slate-200"
+      }`}
+    >
+      {label}
+    </span>
+  );
+}
+
+function QuestionBubble({ question, total }: { question: InterviewQuestion; total?: number }) {
+  const number = question.order_index + 1;
+  return (
+    <div className="rounded-2xl rounded-tl-sm border border-slate-200 bg-white px-4 py-3 text-sm shadow-sm">
+      <div className="mb-1.5 flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-semibold uppercase tracking-wide text-pink-600">
+          {total ? `Question ${number} of ${total}` : `Question ${number}`}
+        </span>
+        <DifficultyBadge difficulty={question.difficulty} />
+      </div>
+      {total ? (
+        <div className="mb-2 h-1 w-full overflow-hidden rounded-full bg-slate-100">
+          <div
+            className="h-full rounded-full bg-pink-500 transition-all"
+            style={{ width: `${Math.round((number / total) * 100)}%` }}
+          />
+        </div>
+      ) : null}
+      <p className="font-medium text-slate-700">{question.prompt}</p>
+      <Sources citations={question.citations} className="mt-2" />
+    </div>
+  );
+}
+
+function FeedbackCard({ feedback }: { feedback: Feedback }) {
+  // Older sessions stored a single prose blob instead of structured feedback.
+  if (feedback.feedback && !feedback.strengths) {
+    return (
+      <div className="rounded-2xl border border-pink-100 bg-pink-50/40 px-4 py-3 text-sm">
+        <Markdown content={feedback.feedback} />
+      </div>
+    );
+  }
+
+  const score = typeof feedback.score === "number" ? feedback.score : null;
+  const details = [
+    feedback.missing_points?.length ? ["Worth adding", feedback.missing_points] : null,
+    feedback.weaknesses?.length ? ["Could be stronger", feedback.weaknesses] : null,
+  ].filter(Boolean) as [string, string[]][];
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-pink-100 bg-white text-sm shadow-sm">
+      <div className="flex items-center justify-between gap-3 border-b border-pink-100 bg-pink-50/50 px-4 py-2">
+        <span className="text-xs font-semibold uppercase tracking-wide text-pink-600">Feedback</span>
+        {score !== null && (
+          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-semibold text-pink-700 ring-1 ring-pink-200">
+            {score}/5
+          </span>
+        )}
+      </div>
+
+      <div className="space-y-3 px-4 py-3">
+        {feedback.strengths?.length ? (
+          <ul className="space-y-1 text-slate-600">
+            {feedback.strengths.slice(0, 3).map((item, i) => (
+              <li key={i} className="flex gap-2">
+                <CheckCircle2 size={15} className="mt-0.5 shrink-0 text-pink-500" />
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-slate-500">Thanks — here is how that answer would land.</p>
+        )}
+
+        {feedback.suggested_answer && (
+          <div className="rounded-xl border border-pink-200 bg-pink-50/60 px-3.5 py-3">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-pink-700">
+              A stronger answer
+            </p>
+            <Markdown content={feedback.suggested_answer} />
+          </div>
+        )}
+
+        {feedback.follow_up && (
+          <p className="text-xs text-slate-500">
+            <span className="font-medium text-slate-600">They may follow up with:</span>{" "}
+            {feedback.follow_up}
+          </p>
+        )}
+
+        {(details.length > 0 || feedback.accuracy || feedback.clarity || feedback.relevance) && (
+          <details className="group">
+            <summary className="cursor-pointer list-none text-xs font-medium text-slate-500 hover:text-pink-600">
+              <span className="group-open:hidden">Show more detail</span>
+              <span className="hidden group-open:inline">Hide detail</span>
+            </summary>
+            <div className="mt-2 space-y-2 border-t border-slate-100 pt-2 text-slate-600">
+              {details.map(([label, items]) => (
+                <div key={label}>
+                  <p className="text-xs font-semibold text-slate-500">{label}</p>
+                  <ul className="mt-1 space-y-1">
+                    {items.slice(0, 3).map((item, i) => (
+                      <li key={i}>• {item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+              {(feedback.accuracy || feedback.clarity || feedback.relevance) && (
+                <dl className="grid grid-cols-1 gap-1 sm:grid-cols-3">
+                  {feedback.accuracy && <Rating label="Accuracy" value={feedback.accuracy} />}
+                  {feedback.clarity && <Rating label="Clarity" value={feedback.clarity} />}
+                  {feedback.relevance && <Rating label="Relevance" value={feedback.relevance} />}
+                </dl>
+              )}
+            </div>
+          </details>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Rating({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-xs font-semibold text-slate-500">{label}</dt>
+      <dd>{value}</dd>
+    </div>
+  );
 }
