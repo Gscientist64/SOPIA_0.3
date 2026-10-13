@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -12,7 +12,7 @@ import { api, errorMessage } from "../services/api";
 import type { UserDashboard } from "../types";
 
 const STAT_CARDS = [
-  { key: "conversations", label: "Conversations", icon: MessageSquare, tone: "bg-teal-50 text-teal-700" },
+  { key: "conversations", label: "Conversations", icon: MessageSquare, tone: "bg-pink-50 text-pink-700" },
   { key: "questions_asked", label: "Questions asked", icon: Target, tone: "bg-indigo-50 text-indigo-700" },
   { key: "learning_sessions", label: "Learning sessions", icon: GraduationCap, tone: "bg-amber-50 text-amber-700" },
   { key: "exams_completed", label: "Exams completed", icon: BookOpen, tone: "bg-rose-50 text-rose-700" },
@@ -102,7 +102,7 @@ export default function Dashboard() {
                   <span>{t}</span>
                   <button
                     onClick={() => navigate("/learn")}
-                    className="text-xs font-medium text-teal-600 hover:underline"
+                    className="text-xs font-medium text-pink-600 hover:underline"
                   >
                     Study
                   </button>
@@ -122,7 +122,7 @@ export default function Dashboard() {
                 <li key={c.id}>
                   <button
                     onClick={() => navigate("/chat")}
-                    className="w-full truncate text-left text-sm text-slate-600 hover:text-teal-600"
+                    className="w-full truncate text-left text-sm text-slate-600 hover:text-pink-600"
                   >
                     {c.label}
                   </button>
@@ -163,7 +163,7 @@ export default function Dashboard() {
                   <span className="text-slate-700">
                     {a.score}/{a.maximum_score}
                   </span>
-                  <span className="text-xs font-medium text-teal-600">{a.percentage ?? 0}%</span>
+                  <span className="text-xs font-medium text-pink-600">{a.percentage ?? 0}%</span>
                 </li>
               ))}
             </ul>
@@ -176,21 +176,21 @@ export default function Dashboard() {
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <button
           onClick={() => navigate("/chat")}
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-teal-300 hover:shadow"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:shadow"
         >
-          <MessageSquare className="text-teal-600" size={22} />
+          <MessageSquare className="text-pink-600" size={22} />
           <span className="font-medium text-slate-700">Ask about SOPs</span>
         </button>
         <button
           onClick={() => navigate("/learn")}
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-teal-300 hover:shadow"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:shadow"
         >
           <GraduationCap className="text-amber-600" size={22} />
           <span className="font-medium text-slate-700">Start learning</span>
         </button>
         <button
           onClick={() => navigate("/documents")}
-          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-teal-300 hover:shadow"
+          className="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:border-pink-300 hover:shadow"
         >
           <FileText className="text-indigo-600" size={22} />
           <span className="font-medium text-slate-700">Knowledge base</span>

@@ -17,7 +17,7 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.db.session import get_db
-from app.models.user import RoleEnum, User
+from app.models.user import MEMBER_ROLES, RoleEnum, User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_PREFIX}/auth/token")
 
@@ -115,5 +115,11 @@ def require_roles(*roles: RoleEnum) -> Callable[[User], User]:
 # Convenience dependencies.
 require_admin = require_roles(RoleEnum.SUPER_ADMIN, RoleEnum.CONTENT_ADMIN)
 require_super_admin = require_roles(RoleEnum.SUPER_ADMIN)
+# A registered account, as opposed to an anonymous guest. Used by the features
+# that need a real account (progress tracking, assessments) rather than by the
+# assistant itself, which guests may also use.
+require_member = require_roles(*MEMBER_ROLES)
+
 AdminUser = Annotated[User, Depends(require_admin)]
 SuperAdminUser = Annotated[User, Depends(require_super_admin)]
+MemberUser = Annotated[User, Depends(require_member)]

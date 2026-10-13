@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState } from "react";
 import { GraduationCap, Loader2, Send, Sparkles } from "lucide-react";
 import Markdown from "../components/Markdown";
 import Sources from "../components/Sources";
@@ -142,12 +142,12 @@ export default function Learn() {
           onChange={(e) => setTopic(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && startSession()}
           placeholder="e.g. Monitoring and Evaluation"
-          className="min-w-[220px] flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+          className="min-w-[220px] flex-1 rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
         />
         <button
           onClick={startSession}
           disabled={busy || !topic.trim()}
-          className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+          className="flex items-center gap-2 rounded-lg bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-slate-300"
         >
           {busy ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
           {session ? "Restart" : "Start learning"}
@@ -166,7 +166,7 @@ export default function Learn() {
           <button
             onClick={generateQuiz}
             disabled={busy}
-            className="ml-auto rounded-lg border border-teal-300 px-3 py-1.5 text-xs font-semibold text-teal-700 transition hover:bg-teal-50"
+            className="ml-auto rounded-lg border border-pink-300 px-3 py-1.5 text-xs font-semibold text-pink-700 transition hover:bg-pink-50"
           >
             Generate quiz
           </button>
@@ -177,7 +177,7 @@ export default function Learn() {
         {turns.map((turn, i) =>
           turn.role === "user" ? (
             <div key={i} className="flex justify-end">
-              <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-teal-600 px-4 py-2.5 text-sm text-white">
+              <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-pink-600 px-4 py-2.5 text-sm text-white">
                 {turn.content}
               </div>
             </div>
@@ -192,7 +192,7 @@ export default function Learn() {
         )}
         {busy && !quiz && (
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Loader2 size={15} className="animate-spin" /> SOPIA is preparing…
+            <Loader2 size={15} className="animate-spin" /> SOPIA is preparingâ€¦
           </div>
         )}
       </div>
@@ -209,13 +209,13 @@ export default function Learn() {
                 sendTurn();
               }
             }}
-            placeholder="Answer or ask a follow-up…"
-            className="max-h-32 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            placeholder="Answer or ask a follow-upâ€¦"
+            className="max-h-32 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
           <button
             onClick={sendTurn}
             disabled={busy || !input.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-600 text-white transition hover:bg-teal-700 disabled:bg-slate-300"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-600 text-white transition hover:bg-pink-700 disabled:bg-slate-300"
             aria-label="Send"
           >
             <Send size={17} />
@@ -246,7 +246,7 @@ export default function Learn() {
                           value={opt}
                           checked={answers[q.id] === opt}
                           onChange={() => setAnswers((prev) => ({ ...prev, [q.id]: opt }))}
-                          className="accent-teal-600"
+                          className="accent-pink-600"
                         />
                         {opt}
                       </label>
@@ -256,7 +256,7 @@ export default function Learn() {
                       value={answers[q.id] ?? ""}
                       onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
                       placeholder="Your answer"
-                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                      className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pink-500"
                     />
                   )}
                 </div>
@@ -266,7 +266,7 @@ export default function Learn() {
           <button
             onClick={submitQuiz}
             disabled={busy}
-            className="mt-5 flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:bg-slate-300"
+            className="mt-5 flex items-center gap-2 rounded-lg bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:bg-slate-300"
           >
             {busy && <Loader2 size={16} className="animate-spin" />}
             Submit quiz
@@ -277,7 +277,7 @@ export default function Learn() {
       {result && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-slate-800">Quiz results</h2>
-          <p className="mt-2 text-3xl font-bold text-teal-700">{result.percentage}%</p>
+          <p className="mt-2 text-3xl font-bold text-pink-700">{result.percentage}%</p>
           <p className="text-sm text-slate-500">
             {result.score} of {result.maximum_score} correct
           </p>
@@ -292,13 +292,13 @@ export default function Learn() {
                 key={i}
                 className={`rounded-lg border p-3 text-sm ${
                   d.is_correct
-                    ? "border-teal-200 bg-teal-50/60"
+                    ? "border-pink-200 bg-pink-50/60"
                     : "border-rose-200 bg-rose-50/60"
                 }`}
               >
                 <p className="font-medium text-slate-700">{d.prompt}</p>
                 <p className="mt-1 text-slate-600">
-                  Your answer: <span className="font-medium">{d.your_answer || "—"}</span>
+                  Your answer: <span className="font-medium">{d.your_answer || "â€”"}</span>
                 </p>
                 {!d.is_correct && (
                   <p className="text-slate-600">

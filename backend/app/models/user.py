@@ -11,10 +11,16 @@ class RoleEnum(str, enum.Enum):
     SUPER_ADMIN = "SUPER_ADMIN"
     CONTENT_ADMIN = "CONTENT_ADMIN"
     USER = "USER"
+    # An unauthenticated visitor. Guests may use the assistant and interview
+    # practice, but never the learning, assessment or administration features.
+    GUEST = "GUEST"
 
 
 # Roles allowed to manage documents / SOPs.
 CONTENT_ROLES = (RoleEnum.SUPER_ADMIN, RoleEnum.CONTENT_ADMIN)
+
+# Roles belonging to a registered account (not anonymous visitors).
+MEMBER_ROLES = (RoleEnum.SUPER_ADMIN, RoleEnum.CONTENT_ADMIN, RoleEnum.USER)
 
 
 class Organization(Base):

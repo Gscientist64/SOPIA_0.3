@@ -77,6 +77,14 @@ class Settings(BaseSettings):
     # requests from one address in seconds.
     RATE_LIMIT_ENABLED: bool = True
 
+    # --- Anonymous access ---
+    # Organisation whose SOPs anonymous visitors may search. Anonymous use of
+    # the assistant and interview practice is enabled only when this is set, so
+    # a deployment cannot expose chat by accident. Guests are recorded as users
+    # in this organisation, which means every organisation-scoped query already
+    # limits them to these documents without any further filtering.
+    PUBLIC_ORGANIZATION_ID: int | None = None
+
     # --- Uploads ---
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_MB: int = 25
@@ -134,6 +142,11 @@ class Settings(BaseSettings):
     @property
     def is_production(self) -> bool:
         return self.ENVIRONMENT.strip().lower() in {"production", "prod"}
+
+    @property
+    def anonymous_access_enabled(self) -> bool:
+        """Anonymous use is opt-in: it needs a published organisation to scope to."""
+        return self.PUBLIC_ORGANIZATION_ID is not None
 
     @property
     def allowed_host_list(self) -> list[str]:

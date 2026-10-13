@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { CheckCircle2, Loader2, Send, Users } from "lucide-react";
 import Markdown from "../components/Markdown";
 import Sources from "../components/Sources";
@@ -125,7 +125,7 @@ export default function Interviews() {
             value={jobTitle}
             onChange={(e) => setJobTitle(e.target.value)}
             placeholder="e.g. Monitoring and Evaluation Officer"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <label className="block">
@@ -134,7 +134,7 @@ export default function Interviews() {
             value={industry}
             onChange={(e) => setIndustry(e.target.value)}
             placeholder="Health"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <label className="block">
@@ -142,7 +142,7 @@ export default function Interviews() {
           <select
             value={level}
             onChange={(e) => setLevel(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           >
             {LEVELS.map((l) => (
               <option key={l} value={l}>
@@ -156,7 +156,7 @@ export default function Interviews() {
           <select
             value={type}
             onChange={(e) => setType(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           >
             {TYPES.map((t) => (
               <option key={t} value={t}>
@@ -171,13 +171,13 @@ export default function Interviews() {
             value={topics}
             onChange={(e) => setTopics(e.target.value)}
             placeholder="data analysis, reporting"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <button
           onClick={start}
           disabled={busy || !jobTitle.trim()}
-          className="flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:col-span-2"
+          className="flex items-center justify-center gap-2 rounded-lg bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:col-span-2"
         >
           {busy && <Loader2 size={16} className="animate-spin" />}
           {session ? "Restart interview" : "Start mock interview"}
@@ -186,7 +186,7 @@ export default function Interviews() {
 
       {session && (
         <div className="mt-3 text-xs text-slate-500">
-          Practising for <span className="font-medium text-slate-700">{session.job_title}</span> ·{" "}
+          Practising for <span className="font-medium text-slate-700">{session.job_title}</span> Â·{" "}
           {session.interview_type}
         </div>
       )}
@@ -199,7 +199,7 @@ export default function Interviews() {
               <Sources citations={entry.question.citations} className="mt-2" />
             </div>
             <div className="flex justify-end">
-              <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-teal-600 px-4 py-2.5 text-sm text-white">
+              <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-pink-600 px-4 py-2.5 text-sm text-white">
                 {entry.answer}
               </div>
             </div>
@@ -223,7 +223,7 @@ export default function Interviews() {
 
         {busy && (
           <div className="flex items-center gap-2 text-sm text-slate-400">
-            <Loader2 size={15} className="animate-spin" /> Evaluating…
+            <Loader2 size={15} className="animate-spin" /> Evaluatingâ€¦
           </div>
         )}
       </div>
@@ -234,13 +234,13 @@ export default function Interviews() {
             rows={3}
             value={answer}
             onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Type your answer…"
-            className="max-h-40 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            placeholder="Type your answerâ€¦"
+            className="max-h-40 flex-1 resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
           <button
             onClick={sendAnswer}
             disabled={busy || !answer.trim()}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-teal-600 text-white transition hover:bg-teal-700 disabled:bg-slate-300"
+            className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-600 text-white transition hover:bg-pink-700 disabled:bg-slate-300"
             aria-label="Send answer"
           >
             <Send size={17} />
@@ -251,11 +251,11 @@ export default function Interviews() {
       {summary && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center gap-2">
-            <CheckCircle2 className="text-teal-600" size={20} />
+            <CheckCircle2 className="text-pink-600" size={20} />
             <h2 className="font-semibold text-slate-800">Interview summary</h2>
           </div>
           <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <SummaryList title="Strengths" items={summary.strengths} tone="text-teal-700" />
+            <SummaryList title="Strengths" items={summary.strengths} tone="text-pink-700" />
             <SummaryList title="Areas to improve" items={summary.weak_areas} tone="text-rose-600" />
             <SummaryList
               title="Difficult questions"
@@ -289,7 +289,7 @@ function SummaryList({
       {items && items.length ? (
         <ul className={`mt-2 space-y-1 text-sm ${tone}`}>
           {items.map((item, i) => (
-            <li key={i}>• {item}</li>
+            <li key={i}>â€¢ {item}</li>
           ))}
         </ul>
       ) : (

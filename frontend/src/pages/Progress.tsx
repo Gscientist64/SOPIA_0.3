@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Loader2, TrendingUp } from "lucide-react";
 import { api, errorMessage } from "../services/api";
 import type { UserDashboard } from "../types";
@@ -43,7 +43,7 @@ export default function Progress() {
   return (
     <div className="mx-auto max-w-5xl p-6 md:p-8">
       <div className="flex items-center gap-3">
-        <TrendingUp className="text-teal-600" size={26} />
+        <TrendingUp className="text-pink-600" size={26} />
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">Your progress</h1>
       </div>
 
@@ -113,7 +113,7 @@ export default function Progress() {
                     <td className="py-2 text-slate-700">
                       {a.score}/{a.maximum_score}
                     </td>
-                    <td className="py-2 font-medium text-teal-600">{a.percentage ?? 0}%</td>
+                    <td className="py-2 font-medium text-pink-600">{a.percentage ?? 0}%</td>
                     <td className="py-2 text-slate-500">{a.status}</td>
                   </tr>
                 ))}

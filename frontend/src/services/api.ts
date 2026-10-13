@@ -1,6 +1,9 @@
 import axios, { AxiosError } from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000/api/v1";
+// Relative by default: the frontend and API share an origin both when FastAPI
+// serves the built frontend and when nginx fronts /api. An absolute URL is only
+// needed when the two are on different hosts, and is supplied via VITE_API_URL.
+const API_URL = import.meta.env.VITE_API_URL ?? "/api/v1";
 const TOKEN_KEY = "sopia_token";
 const REFRESH_KEY = "sopia_refresh";
 

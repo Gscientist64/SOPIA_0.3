@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { AlertTriangle, BookOpen, Clock, Loader2 } from "lucide-react";
 import Sources from "../components/Sources";
 import { api, errorMessage } from "../services/api";
@@ -79,7 +79,7 @@ export default function Exams() {
       );
       setResult(data);
       setSecondsLeft(null);
-      if (auto) setError("Time expired — the exam was submitted automatically.");
+      if (auto) setError("Time expired â€” the exam was submitted automatically.");
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -128,7 +128,7 @@ export default function Exams() {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             placeholder="e.g. Client registration"
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <label className="block">
@@ -136,7 +136,7 @@ export default function Exams() {
           <select
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           >
             {DIFFICULTIES.map((d) => (
               <option key={d} value={d}>
@@ -150,7 +150,7 @@ export default function Exams() {
           <select
             value={questionType}
             onChange={(e) => setQuestionType(e.target.value)}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           >
             {TYPES.map((t) => (
               <option key={t.value} value={t.value}>
@@ -167,7 +167,7 @@ export default function Exams() {
             max={30}
             value={count}
             onChange={(e) => setCount(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <label className="block">
@@ -178,13 +178,13 @@ export default function Exams() {
             max={240}
             value={timeLimit}
             onChange={(e) => setTimeLimit(Number(e.target.value))}
-            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+            className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
           />
         </label>
         <button
           onClick={generate}
           disabled={busy || !topic.trim()}
-          className="flex items-center justify-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:col-span-2"
+          className="flex items-center justify-center gap-2 rounded-lg bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-slate-300 sm:col-span-2"
         >
           {busy ? <Loader2 size={16} className="animate-spin" /> : <BookOpen size={16} />}
           Start mock exam
@@ -220,7 +220,7 @@ export default function Exams() {
                   key={opt}
                   className={`flex cursor-pointer items-center gap-2 rounded-lg border px-3 py-2.5 text-sm transition ${
                     answers[current.id] === opt
-                      ? "border-teal-400 bg-teal-50 text-teal-800"
+                      ? "border-pink-400 bg-pink-50 text-pink-800"
                       : "border-slate-200 text-slate-600 hover:bg-slate-50"
                   }`}
                 >
@@ -229,7 +229,7 @@ export default function Exams() {
                     name={`eq-${current.id}`}
                     checked={answers[current.id] === opt}
                     onChange={() => setAnswers((prev) => ({ ...prev, [current.id]: opt }))}
-                    className="accent-teal-600"
+                    className="accent-pink-600"
                   />
                   {opt}
                 </label>
@@ -239,8 +239,8 @@ export default function Exams() {
                 rows={3}
                 value={answers[current.id] ?? ""}
                 onChange={(e) => setAnswers((prev) => ({ ...prev, [current.id]: e.target.value }))}
-                placeholder="Type your answer…"
-                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-teal-500"
+                placeholder="Type your answerâ€¦"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-pink-500"
               />
             )}
           </div>
@@ -273,7 +273,7 @@ export default function Exams() {
             <button
               onClick={() => submit(false)}
               disabled={busy}
-              className="ml-auto flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:bg-slate-300"
+              className="ml-auto flex items-center gap-2 rounded-lg bg-pink-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:bg-slate-300"
             >
               {busy && <Loader2 size={15} className="animate-spin" />}
               Submit exam
@@ -287,11 +287,11 @@ export default function Exams() {
                 onClick={() => setIndex(i)}
                 className={`h-8 w-8 rounded-md text-xs font-semibold transition ${
                   i === index
-                    ? "bg-teal-600 text-white"
+                    ? "bg-pink-600 text-white"
                     : marked.has(q.id)
                       ? "bg-amber-100 text-amber-700"
                       : answers[q.id]
-                        ? "bg-teal-100 text-teal-700"
+                        ? "bg-pink-100 text-pink-700"
                         : "bg-slate-100 text-slate-500"
                 }`}
               >
@@ -305,7 +305,7 @@ export default function Exams() {
       {result && (
         <div className="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
           <h2 className="font-semibold text-slate-800">Results</h2>
-          <p className="mt-2 text-3xl font-bold text-teal-700">{result.percentage}%</p>
+          <p className="mt-2 text-3xl font-bold text-pink-700">{result.percentage}%</p>
           <p className="text-sm text-slate-500">
             {result.score} of {result.maximum_score} correct
           </p>
@@ -319,12 +319,12 @@ export default function Exams() {
               <div
                 key={i}
                 className={`rounded-lg border p-3 text-sm ${
-                  d.is_correct ? "border-teal-200 bg-teal-50/60" : "border-rose-200 bg-rose-50/60"
+                  d.is_correct ? "border-pink-200 bg-pink-50/60" : "border-rose-200 bg-rose-50/60"
                 }`}
               >
                 <p className="font-medium text-slate-700">{d.prompt}</p>
                 <p className="mt-1 text-slate-600">
-                  Your answer: <span className="font-medium">{d.your_answer || "—"}</span>
+                  Your answer: <span className="font-medium">{d.your_answer || "â€”"}</span>
                 </p>
                 {!d.is_correct && d.correct_answer && (
                   <p className="text-slate-600">

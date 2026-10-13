@@ -79,7 +79,7 @@ def upload_document(
 
 @router.get("/", response_model=list[DocumentOut])
 def list_documents(
-    current_user: CurrentUser,
+    current_user: AdminUser,
     db: Session = Depends(get_db),
     status_filter: str | None = None,
     department: str | None = None,
@@ -100,7 +100,7 @@ def list_documents(
 
 
 @router.get("/{document_id}", response_model=DocumentDetailOut)
-def get_document(document_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def get_document(document_id: int, current_user: AdminUser, db: Session = Depends(get_db)):
     document = _get_document_for_user(db, document_id, current_user)
     if not current_user.is_admin and document.status != DocumentStatus.ACTIVE:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
@@ -133,7 +133,7 @@ def delete_document(document_id: int, admin: AdminUser, db: Session = Depends(ge
 
 
 @router.get("/{document_id}/versions", response_model=list[DocumentVersionOut])
-def list_versions(document_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def list_versions(document_id: int, current_user: AdminUser, db: Session = Depends(get_db)):
     document = _get_document_for_user(db, document_id, current_user)
     return (
         db.query(DocumentVersion)
@@ -226,7 +226,12 @@ def reprocess_document(
 
 @router.get("/chunks/{chunk_id}")
 def get_chunk_source(chunk_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
-    """Return a single chunk's content so the UI can show the cited source."""
+    """Return a single chunk's content so the UI can show the cited source.
+
+    Deliberately left open to anonymous visitors: viewing the source behind an
+    answer is the whole point of the product, and the organisation check below
+    still confines a guest to the published organisation's documents.
+    """
     chunk = db.query(DocumentChunk).filter(DocumentChunk.id == chunk_id).first()
     if chunk is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source not found")

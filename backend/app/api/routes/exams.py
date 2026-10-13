@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import re
 from datetime import UTC, datetime, timedelta
@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.ai.base import AIProviderError
 from app.ai.router import get_ai_provider
 from app.core.rate_limit import GENERATION_LIMIT
-from app.core.security import CurrentUser
+from app.core.security import MemberUser
 from app.db.session import get_db
 from app.models.assessment import (
     AttemptStatus,
@@ -72,7 +72,7 @@ def _load_questions(db: Session, exam: ExamSession) -> list[Question]:
 @router.post("/generate", response_model=ExamStartResponse)
 def generate_exam(
     payload: ExamGenerateRequest,
-    current_user: CurrentUser,
+    current_user: MemberUser,
     db: Session = Depends(get_db),
     _: None = Depends(GENERATION_LIMIT),
 ):
@@ -177,7 +177,7 @@ def generate_exam(
 
 
 @router.get("/attempts", response_model=list[ExamAttemptOut])
-def list_attempts(current_user: CurrentUser, db: Session = Depends(get_db)):
+def list_attempts(current_user: MemberUser, db: Session = Depends(get_db)):
     return (
         db.query(ExamAttempt)
         .filter(ExamAttempt.user_id == current_user.id)
@@ -198,7 +198,7 @@ def _owned_attempt(db: Session, attempt_id: int, user) -> ExamAttempt:
 
 
 @router.get("/attempts/{attempt_id}/result", response_model=ExamResultOut)
-def get_result(attempt_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def get_result(attempt_id: int, current_user: MemberUser, db: Session = Depends(get_db)):
     attempt = _owned_attempt(db, attempt_id, current_user)
     return _build_result(db, attempt)
 
@@ -230,7 +230,7 @@ def _build_result(db: Session, attempt: ExamAttempt) -> ExamResultOut:
 
 
 @router.get("/attempts/{attempt_id}", response_model=ExamResultOut)
-def get_attempt(attempt_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def get_attempt(attempt_id: int, current_user: MemberUser, db: Session = Depends(get_db)):
     attempt = _owned_attempt(db, attempt_id, current_user)
     return _build_result(db, attempt)
 
@@ -239,7 +239,7 @@ def get_attempt(attempt_id: int, current_user: CurrentUser, db: Session = Depend
 def submit_exam(
     attempt_id: int,
     payload: ExamSubmitRequest,
-    current_user: CurrentUser,
+    current_user: MemberUser,
     db: Session = Depends(get_db),
 ):
     attempt = _owned_attempt(db, attempt_id, current_user)

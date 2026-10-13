@@ -2,6 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
+import secrets
+import uuid
+
 from app.core.config import settings
 from app.core.rate_limit import AUTH_LIMIT, REGISTER_LIMIT
 from app.core.security import (
@@ -13,7 +16,7 @@ from app.core.security import (
     verify_password,
 )
 from app.db.session import get_db
-from app.models.user import Organization, RoleEnum, User
+from app.models.user import MEMBER_ROLES, Organization, RoleEnum, User
 from app.schemas.auth import RefreshRequest, UserCreate, UserLogin, UserOut
 
 router = APIRouter()
@@ -121,6 +124,63 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 def me(current_user: CurrentUser):
     return current_user
+
+
+@router.post("/guest", response_model=dict, status_code=status.HTTP_201_CREATED)
+def start_guest_session(
+    db: Session = Depends(get_db),
+    _: None = Depends(REGISTER_LIMIT),
+):
+    """Start an anonymous session, so the assistant can be used without an account.
+
+    The visitor is recorded as a user in the published organisation. That is what
+    keeps anonymous retrieval safe: every query is already scoped to the caller's
+    organisation, so a guest can only ever reach documents published there.
+
+    Disabled until ``PUBLIC_ORGANIZATION_ID`` is configured, so a deployment
+    cannot expose the assistant by accident.
+    """
+    if not settings.anonymous_access_enabled:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(
+                "Anonymous access is not enabled on this deployment. "
+                "Sign in, or set PUBLIC_ORGANIZATION_ID to publish an organisation."
+            ),
+        )
+
+    organization = (
+        db.query(Organization)
+        .filter(Organization.id == settings.PUBLIC_ORGANIZATION_ID)
+        .first()
+    )
+    if organization is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="The published organisation configured for anonymous access does not exist.",
+        )
+
+    guest = User(
+        # A real, unique address keeps the unique constraint meaningful; the
+        # domain is reserved for generated accounts.
+        email=f"guest-{uuid.uuid4().hex}@guest.sopia.local",
+        # A random unusable password: this account must never be signable-into.
+        hashed_password=get_password_hash(secrets.token_urlsafe(32)),
+        full_name=None,
+        role=RoleEnum.GUEST.value,
+        organization_id=organization.id,
+        is_active=True,
+    )
+    db.add(guest)
+    db.commit()
+    db.refresh(guest)
+
+    return {
+        "access_token": create_access_token(guest.id, guest.role),
+        "token_type": "bearer",
+        "role": guest.role,
+        "user": UserOut.model_validate(guest).model_dump(),
+    }
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)

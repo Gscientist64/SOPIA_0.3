@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+﻿import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Check,
@@ -251,7 +251,7 @@ export default function Chat() {
               setActiveId(null);
               setMessages([]);
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-lg bg-teal-600 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700"
+            className="flex w-full items-center justify-center gap-2 rounded-lg bg-pink-600 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700"
           >
             <MessageSquarePlus size={17} />
             New conversation
@@ -262,7 +262,7 @@ export default function Chat() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search conversations"
-              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-teal-500"
+              className="w-full rounded-lg border border-slate-300 py-2 pl-9 pr-3 text-sm outline-none focus:border-pink-500"
             />
           </div>
         </div>
@@ -274,7 +274,7 @@ export default function Chat() {
             <div
               key={c.id}
               className={`group mb-1 flex items-center gap-2 rounded-lg px-3 py-2.5 text-sm transition ${
-                activeId === c.id ? "bg-teal-50 text-teal-800" : "text-slate-700 hover:bg-slate-50"
+                activeId === c.id ? "bg-pink-50 text-pink-800" : "text-slate-700 hover:bg-slate-50"
               }`}
             >
               <button
@@ -287,7 +287,7 @@ export default function Chat() {
               </button>
               <button
                 onClick={() => rename(c)}
-                className="text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-teal-600"
+                className="text-slate-400 opacity-0 transition group-hover:opacity-100 hover:text-pink-600"
                 aria-label="Rename conversation"
               >
                 <Pencil size={14} />
@@ -311,7 +311,7 @@ export default function Chat() {
             <select
               value={mode}
               onChange={(e) => setMode(e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 outline-none focus:border-teal-500"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm font-medium text-slate-700 outline-none focus:border-pink-500"
             >
               {availableModes.map((m) => (
                 <option key={m.value} value={m.value}>
@@ -343,7 +343,7 @@ export default function Chat() {
           <div className="mx-auto max-w-3xl space-y-6">
             {messages.length === 0 && !streamText && (
               <div className="py-16 text-center">
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-600 text-white">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-600 text-white">
                   <BookOpen size={26} />
                 </div>
                 <h2 className="text-xl font-semibold text-slate-800">Ask SOPIA</h2>
@@ -358,7 +358,7 @@ export default function Chat() {
             {messages.map((message) =>
               message.role === "user" ? (
                 <div key={message.id} className="flex justify-end">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-teal-600 px-4 py-3 text-white">
+                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-pink-600 px-4 py-3 text-white">
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</p>
                   </div>
                 </div>
@@ -377,7 +377,7 @@ export default function Chat() {
                             <button
                               key={i}
                               onClick={() => openSource(c)}
-                              className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-teal-300 hover:bg-teal-50/50"
+                              className="block w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-left transition hover:border-pink-300 hover:bg-pink-50/50"
                             >
                               <span className="block text-sm font-medium text-slate-800">
                                 {c.document_title}
@@ -389,10 +389,10 @@ export default function Chat() {
                                   c.page ? `Page ${c.page}` : null,
                                 ]
                                   .filter(Boolean)
-                                  .join(" · ")}
+                                  .join(" Â· ")}
                               </span>
-                              <span className="mt-1 block text-xs font-medium text-teal-600">
-                                View source →
+                              <span className="mt-1 block text-xs font-medium text-pink-600">
+                                View source â†’
                               </span>
                             </button>
                           ))}
@@ -403,7 +403,7 @@ export default function Chat() {
                     <div className="mt-3 flex items-center gap-3 border-t border-slate-100 pt-2">
                       <button
                         onClick={() => copy(message)}
-                        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-teal-600"
+                        className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-pink-600"
                       >
                         {copiedId === message.id ? <Check size={13} /> : <Copy size={13} />}
                         {copiedId === message.id ? "Copied" : "Copy"}
@@ -411,7 +411,7 @@ export default function Chat() {
                       {activeId != null && (
                         <button
                           onClick={() => retry(message)}
-                          className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-teal-600"
+                          className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-pink-600"
                         >
                           <RefreshCw size={13} />
                           Retry
@@ -434,7 +434,7 @@ export default function Chat() {
             {sending && !streamText && (
               <div className="flex items-center gap-2 text-sm text-slate-500">
                 <Loader2 size={16} className="animate-spin" />
-                SOPIA is thinking…
+                SOPIA is thinkingâ€¦
               </div>
             )}
 
@@ -466,15 +466,15 @@ export default function Chat() {
                 }
               }}
               placeholder={
-                mode === "SOP_MODE" ? "Ask about your SOPs…" : "Ask SOPIA to teach you something…"
+                mode === "SOP_MODE" ? "Ask about your SOPsâ€¦" : "Ask SOPIA to teach you somethingâ€¦"
               }
               disabled={sending}
-              className="max-h-40 flex-1 resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-100 disabled:bg-slate-50"
+              className="max-h-40 flex-1 resize-none rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-800 outline-none transition focus:border-pink-500 focus:ring-2 focus:ring-pink-100 disabled:bg-slate-50"
             />
             <button
               onClick={send}
               disabled={sending || !input.trim()}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-pink-600 text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-slate-300"
               aria-label="Send message"
             >
               {sending ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
@@ -498,7 +498,7 @@ export default function Chat() {
             <p className="mt-1 text-sm text-slate-500">
               {[source.section, source.page ? `Page ${source.page}` : null]
                 .filter(Boolean)
-                .join(" · ")}
+                .join(" Â· ")}
             </p>
             <div className="mt-4 whitespace-pre-wrap rounded-lg bg-slate-50 p-4 text-sm leading-relaxed text-slate-700">
               {source.content}

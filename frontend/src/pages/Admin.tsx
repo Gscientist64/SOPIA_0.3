@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import { Loader2, Shield, Users } from "lucide-react";
 import { api, errorMessage } from "../services/api";
 import { useAuth } from "../stores/auth";
@@ -62,7 +62,7 @@ export default function Admin() {
   return (
     <div className="mx-auto max-w-6xl p-6 md:p-8">
       <div className="flex items-center gap-3">
-        <Shield className="text-teal-700" size={26} />
+        <Shield className="text-pink-700" size={26} />
         <h1 className="text-2xl font-bold tracking-tight text-slate-800">Administration</h1>
       </div>
       <p className="mt-1 text-sm text-slate-500">
@@ -130,7 +130,7 @@ export default function Admin() {
             {(stats?.recent_documents ?? []).map((doc) => (
               <tr key={doc.id}>
                 <td className="px-4 py-3 font-medium text-slate-700">{doc.title}</td>
-                <td className="px-4 py-3 text-slate-500">{doc.department || "—"}</td>
+                <td className="px-4 py-3 text-slate-500">{doc.department || "â€”"}</td>
                 <td className="px-4 py-3 text-slate-500">{doc.status}</td>
               </tr>
             ))}
@@ -171,7 +171,7 @@ export default function Admin() {
                         value={u.role}
                         disabled={busyId === u.id || u.id === user.id}
                         onChange={(e) => updateUser(u, { role: e.target.value })}
-                        className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-teal-500 disabled:bg-slate-50"
+                        className="rounded-lg border border-slate-300 px-2 py-1.5 text-xs outline-none focus:border-pink-500 disabled:bg-slate-50"
                       >
                         {ROLES.map((r) => (
                           <option key={r} value={r}>
@@ -186,7 +186,7 @@ export default function Admin() {
                         onClick={() => updateUser(u, { is_active: !u.is_active })}
                         className={`rounded-full px-3 py-1 text-xs font-medium transition ${
                           u.is_active
-                            ? "bg-teal-100 text-teal-700 hover:bg-teal-200"
+                            ? "bg-pink-100 text-pink-700 hover:bg-pink-200"
                             : "bg-slate-200 text-slate-600 hover:bg-slate-300"
                         } disabled:opacity-50`}
                       >

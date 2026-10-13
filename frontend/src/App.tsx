@@ -28,14 +28,52 @@ function App() {
               </ProtectedRoute>
             }
           >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
+            {/* Opens straight into the assistant: no sign-in wall. */}
+            <Route index element={<Navigate to="/chat" replace />} />
             <Route path="chat" element={<Chat />} />
-            <Route path="documents" element={<Documents />} />
-            <Route path="learn" element={<Learn />} />
-            <Route path="exams" element={<Exams />} />
             <Route path="interviews" element={<Interviews />} />
-            <Route path="progress" element={<Progress />} />
+            {/* A registered account is needed for progress and assessments. */}
+            <Route
+              path="learn"
+              element={
+                <ProtectedRoute memberOnly>
+                  <Learn />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="exams"
+              element={
+                <ProtectedRoute memberOnly>
+                  <Exams />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="progress"
+              element={
+                <ProtectedRoute memberOnly>
+                  <Progress />
+                </ProtectedRoute>
+              }
+            />
+            {/* Administrators only. */}
+            <Route
+              path="dashboard"
+              element={
+                <ProtectedRoute memberOnly>
+                  <Dashboard />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="documents"
+              element={
+                <ProtectedRoute adminOnly>
+                  <Documents />
+                </ProtectedRoute>
+              }
+            />
             <Route
               path="admin"
               element={
@@ -45,7 +83,7 @@ function App() {
               }
             />
           </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/chat" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

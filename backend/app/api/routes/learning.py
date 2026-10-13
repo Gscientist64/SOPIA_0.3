@@ -1,4 +1,4 @@
-import json
+﻿import json
 import logging
 import re
 
@@ -9,7 +9,7 @@ from app.ai.base import AIProviderError
 from app.ai.parsing import parse_json_array, parse_json_object
 from app.ai.router import get_ai_provider
 from app.core.rate_limit import CHAT_LIMIT, GENERATION_LIMIT
-from app.core.security import CurrentUser
+from app.core.security import MemberUser
 from app.db.session import get_db
 from app.models.assessment import Question, QuestionOption
 from app.models.learning import LearningProgress, LearningSession, LearningStatus
@@ -69,7 +69,7 @@ def _session_out(session: LearningSession) -> LearningSessionOut:
 @router.post("/sessions/start", response_model=LearningTurnResponse)
 def start_session(
     payload: LearningStartRequest,
-    current_user: CurrentUser,
+    current_user: MemberUser,
     db: Session = Depends(get_db),
     _: None = Depends(GENERATION_LIMIT),
 ):
@@ -116,7 +116,7 @@ def start_session(
 @router.post("/sessions/turn", response_model=LearningTurnResponse)
 def learning_turn(
     payload: LearningTurnRequest,
-    current_user: CurrentUser,
+    current_user: MemberUser,
     db: Session = Depends(get_db),
     _: None = Depends(CHAT_LIMIT),
 ):
@@ -162,7 +162,7 @@ def learning_turn(
 
 
 @router.get("/sessions", response_model=list[LearningSessionOut])
-def list_sessions(current_user: CurrentUser, db: Session = Depends(get_db)):
+def list_sessions(current_user: MemberUser, db: Session = Depends(get_db)):
     return (
         db.query(LearningSession)
         .filter(LearningSession.user_id == current_user.id)
@@ -172,7 +172,7 @@ def list_sessions(current_user: CurrentUser, db: Session = Depends(get_db)):
 
 
 @router.get("/sessions/{session_id}", response_model=LearningSessionOut)
-def get_session(session_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def get_session(session_id: int, current_user: MemberUser, db: Session = Depends(get_db)):
     session = (
         db.query(LearningSession)
         .filter(LearningSession.id == session_id, LearningSession.user_id == current_user.id)
@@ -184,7 +184,7 @@ def get_session(session_id: int, current_user: CurrentUser, db: Session = Depend
 
 
 @router.post("/sessions/{session_id}/complete", response_model=LearningSessionOut)
-def complete_session(session_id: int, current_user: CurrentUser, db: Session = Depends(get_db)):
+def complete_session(session_id: int, current_user: MemberUser, db: Session = Depends(get_db)):
     session = (
         db.query(LearningSession)
         .filter(LearningSession.id == session_id, LearningSession.user_id == current_user.id)
@@ -205,7 +205,7 @@ def complete_session(session_id: int, current_user: CurrentUser, db: Session = D
 @router.post("/quiz", response_model=QuizOut)
 def generate_quiz(
     payload: QuizRequest,
-    current_user: CurrentUser,
+    current_user: MemberUser,
     db: Session = Depends(get_db),
     _: None = Depends(GENERATION_LIMIT),
 ):
@@ -290,7 +290,7 @@ def _same(a, b) -> bool:
 
 
 @router.post("/quiz/submit", response_model=QuizResultOut)
-def submit_quiz(payload: QuizSubmitRequest, current_user: CurrentUser, db: Session = Depends(get_db)):
+def submit_quiz(payload: QuizSubmitRequest, current_user: MemberUser, db: Session = Depends(get_db)):
     details: list[dict] = []
     weak: set[str] = set()
     score = 0

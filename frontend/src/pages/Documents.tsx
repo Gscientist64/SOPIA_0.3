@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+﻿import { useCallback, useEffect, useState } from "react";
 import {
   AlertCircle,
   CheckCircle2,
@@ -14,7 +14,7 @@ import { useAuth } from "../stores/auth";
 import { isAdmin, type DocumentItem } from "../types";
 
 const STATUS_TONE: Record<string, string> = {
-  Active: "bg-teal-50 text-teal-700 border-teal-200",
+  Active: "bg-pink-50 text-pink-700 border-pink-200",
   Processing: "bg-amber-50 text-amber-700 border-amber-200",
   Error: "bg-red-50 text-red-700 border-red-200",
   Draft: "bg-slate-100 text-slate-600 border-slate-200",
@@ -141,7 +141,7 @@ export default function Documents() {
         </div>
       )}
       {notice && (
-        <div className="mt-4 flex items-start gap-3 rounded-lg border border-teal-200 bg-teal-50 px-4 py-3 text-sm text-teal-700">
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-pink-200 bg-pink-50 px-4 py-3 text-sm text-pink-700">
           <CheckCircle2 size={18} className="mt-0.5 shrink-0" />
           <span>{notice}</span>
         </div>
@@ -165,7 +165,7 @@ export default function Documents() {
                   setFile(f);
                   if (f && !title) setTitle(f.name.replace(/\.[^.]+$/, ""));
                 }}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-teal-50 file:px-3 file:py-1.5 file:text-teal-700"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-pink-50 file:px-3 file:py-1.5 file:text-pink-700"
               />
               <span className="mt-1 block text-xs text-slate-400">
                 PDF, DOCX, TXT or Markdown
@@ -176,7 +176,7 @@ export default function Documents() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pink-500"
                 placeholder="Client Registration SOP"
               />
             </label>
@@ -185,7 +185,7 @@ export default function Documents() {
               <input
                 value={versionLabel}
                 onChange={(e) => setVersionLabel(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pink-500"
                 placeholder="1.0"
               />
             </label>
@@ -194,7 +194,7 @@ export default function Documents() {
               <input
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-teal-500"
+                className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-pink-500"
                 placeholder="Clinical Services"
               />
             </label>
@@ -202,10 +202,10 @@ export default function Documents() {
           <button
             type="submit"
             disabled={busy || !file}
-            className="flex items-center gap-2 rounded-lg bg-teal-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-700 disabled:cursor-not-allowed disabled:bg-slate-300"
+            className="flex items-center gap-2 rounded-lg bg-pink-600 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
-            {busy ? "Uploading & indexing…" : "Upload & index"}
+            {busy ? "Uploading & indexingâ€¦" : "Upload & index"}
           </button>
         </form>
       )}
@@ -213,7 +213,7 @@ export default function Documents() {
       <div className="mt-6 space-y-3">
         {loading && (
           <div className="flex items-center gap-2 p-6 text-sm text-slate-400">
-            <Loader2 size={16} className="animate-spin" /> Loading documents…
+            <Loader2 size={16} className="animate-spin" /> Loading documentsâ€¦
           </div>
         )}
         {!loading && documents.length === 0 && (
@@ -237,7 +237,7 @@ export default function Documents() {
                     doc.active_version_label ? `Active v${doc.active_version_label}` : null,
                   ]
                     .filter(Boolean)
-                    .join(" · ") || "No metadata"}
+                    .join(" Â· ") || "No metadata"}
                 </p>
               </div>
               <span
@@ -252,7 +252,7 @@ export default function Documents() {
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button
                 onClick={() => loadVersions(doc)}
-                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-teal-600"
+                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-pink-600"
               >
                 <ChevronDown
                   size={14}
@@ -264,7 +264,7 @@ export default function Documents() {
                 <>
                   <button
                     onClick={() => reprocess(doc.id)}
-                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-teal-600"
+                    className="flex items-center gap-1.5 text-xs font-medium text-slate-500 transition hover:text-pink-600"
                   >
                     <RefreshCw size={13} /> Reprocess
                   </button>
@@ -287,7 +287,7 @@ export default function Documents() {
                   <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
                     <div className="text-xs text-slate-600">
                       <span className="font-medium">v{v.version_label}</span>
-                      {" · "}
+                      {" Â· "}
                       <span
                         className={
                           v.processing_status === "error" ? "text-red-600" : "text-slate-500"
@@ -295,10 +295,10 @@ export default function Documents() {
                       >
                         {v.processing_status}
                       </span>
-                      {v.chunk_count != null && ` · ${v.chunk_count} chunks`}
-                      {v.page_count ? ` · ${v.page_count} pages` : ""}
+                      {v.chunk_count != null && ` Â· ${v.chunk_count} chunks`}
+                      {v.page_count ? ` Â· ${v.page_count} pages` : ""}
                       {v.is_active && (
-                        <span className="ml-2 rounded-full bg-teal-100 px-2 py-0.5 text-teal-700">
+                        <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-pink-700">
                           active
                         </span>
                       )}
@@ -309,7 +309,7 @@ export default function Documents() {
                     {admin && !v.is_active && v.processing_status === "ready" && (
                       <button
                         onClick={() => activate(doc.id, v.id)}
-                        className="rounded-md border border-teal-300 px-2.5 py-1 text-xs font-medium text-teal-700 transition hover:bg-teal-50"
+                        className="rounded-md border border-pink-300 px-2.5 py-1 text-xs font-medium text-pink-700 transition hover:bg-pink-50"
                       >
                         Make active
                       </button>

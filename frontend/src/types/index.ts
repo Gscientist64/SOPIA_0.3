@@ -1,4 +1,4 @@
-export type Role = "SUPER_ADMIN" | "CONTENT_ADMIN" | "USER";
+export type Role = "SUPER_ADMIN" | "CONTENT_ADMIN" | "USER" | "GUEST";
 
 export interface User {
   id: number;
@@ -9,6 +9,13 @@ export interface User {
   is_active: boolean;
   created_at?: string | null;
 }
+
+/** An anonymous visitor: no account, so no progress or assessment features. */
+export const isGuest = (user: User | null): boolean => !!user && user.role === "GUEST";
+
+/** A registered account (as opposed to an anonymous guest). */
+export const isMember = (user: User | null): boolean =>
+  !!user && (user.role === "SUPER_ADMIN" || user.role === "CONTENT_ADMIN" || user.role === "USER");
 
 export const isAdmin = (user: User | null): boolean =>
   !!user && (user.role === "SUPER_ADMIN" || user.role === "CONTENT_ADMIN");

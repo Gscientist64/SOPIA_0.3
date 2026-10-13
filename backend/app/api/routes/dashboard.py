@@ -1,10 +1,10 @@
-import json
+﻿import json
 
 from fastapi import APIRouter, Depends
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.core.security import CurrentUser
+from app.core.security import MemberUser
 from app.db.session import get_db
 from app.models.assessment import AttemptStatus, ExamAttempt
 from app.models.chat import Conversation, Message, MessageRole
@@ -22,7 +22,7 @@ _DEFAULT_RECOMMENDATIONS = [
 
 
 @router.get("/me", response_model=UserDashboardOut)
-def user_dashboard(current_user: CurrentUser, db: Session = Depends(get_db)):
+def user_dashboard(current_user: MemberUser, db: Session = Depends(get_db)):
     user_id = current_user.id
 
     conversation_count = (

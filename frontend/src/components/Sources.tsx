@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+﻿import { FileText } from "lucide-react";
 import type { Citation } from "../types";
 
 const MAX_VISIBLE = 3;
@@ -6,11 +6,11 @@ const MAX_VISIBLE = 3;
 function location(citation: Citation): string {
   return [
     citation.version ? `v${citation.version}` : null,
-    citation.section ? `§ ${citation.section}` : null,
+    citation.section ? `Â§ ${citation.section}` : null,
     citation.page ? `p.${citation.page}` : null,
   ]
     .filter(Boolean)
-    .join(" · ");
+    .join(" Â· ");
 }
 
 /**
@@ -38,12 +38,12 @@ export default function Sources({
       <ul className="mt-1 space-y-0.5">
         {visible.map((citation, index) => (
           <li key={index} className="flex items-start gap-1.5 text-xs text-slate-600">
-            <FileText size={12} className="mt-0.5 shrink-0 text-teal-600" />
+            <FileText size={12} className="mt-0.5 shrink-0 text-pink-600" />
             <span className="min-w-0">
               <span className="font-medium text-slate-700">
                 {citation.document_title ?? "Source document"}
               </span>
-              {location(citation) && <span className="text-slate-500"> · {location(citation)}</span>}
+              {location(citation) && <span className="text-slate-500"> Â· {location(citation)}</span>}
             </span>
           </li>
         ))}
