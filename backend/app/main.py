@@ -67,13 +67,21 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
 
+# Resolved once, because it decides both whether the API exposes its own root
+# endpoint and whether the built frontend is mounted at the end of this module.
+_frontend_dir = settings.frontend_dist
 
-@app.get("/")
-def read_root():
-    payload = {"message": "Welcome to the SOPIA API", "api": settings.API_V1_PREFIX}
-    if settings.api_docs_enabled:
-        payload["docs"] = "/docs"
-    return payload
+# When the frontend is being served, "/" must reach the SPA. A route registered
+# here would be matched first and shadow the mount, so the API's welcome payload
+# is only offered when the API is what the root path serves.
+if _frontend_dir is None:
+
+    @app.get("/")
+    def read_root():
+        payload = {"message": "Welcome to the SOPIA API", "api": settings.API_V1_PREFIX}
+        if settings.api_docs_enabled:
+            payload["docs"] = "/docs"
+        return payload
 
 
 @app.get("/health")
@@ -107,10 +115,9 @@ def ready():
     )
 
 
-# Registered last so it cannot shadow the API routes above. Optional: absent
-# unless a built frontend is present (or FRONTEND_DIST points at one), which is
-# how the offline/demo build runs the whole app on a single port.
-_frontend_dir = settings.frontend_dist
+# Mounted last so it cannot shadow the API routes above. Only present when a
+# built frontend exists (or FRONTEND_DIST points at one), which is how the
+# offline/demo build runs the whole application on a single port.
 if _frontend_dir is not None:
     from app.api.spa import mount_frontend
 
