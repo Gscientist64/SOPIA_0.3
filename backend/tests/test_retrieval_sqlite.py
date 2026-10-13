@@ -13,6 +13,7 @@ on the SQLite database the rest of the suite already uses.
 import pytest
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.models.document import (
     Document,
     DocumentChunk,
@@ -21,6 +22,9 @@ from app.models.document import (
     ProcessingStatus,
 )
 from app.models.user import Organization
+from app.rag import retrieval as retrieval_module
+from app.rag.chunking import Chunk
+from app.rag.ingestion import _embed_text
 from app.rag.retrieval import build_context, retrieve
 
 # A dedicated organisation keeps these rows isolated from every other test.
@@ -122,7 +126,107 @@ def test_keyword_signal_contributes_to_the_score(knowledge_base):
     results = retrieve(QUERY_MATCHING_A, db=knowledge_base, organization_id=ORG)
     top = results[0]
     assert top.keyword_score > 0
-    assert top.score == pytest.approx(0.8 * top.relevance + 0.2 * top.keyword_score)
+    assert top.score == pytest.approx(
+        0.8 * top.relevance
+        + 0.2 * top.keyword_score
+        + retrieval_module._HEADING_WEIGHT * top.heading_score
+    )
+
+
+# ------------------------------------------------- structural context in ranking
+def test_plural_query_terms_match_singular_headings():
+    """A query asking for "pillars" must match a chunk headed "Pillar 1 ...".
+
+    Without plural folding the keyword signal scored zero, which is how a chunk
+    that only *mentions* a list could outrank the chunks that contain it.
+    """
+    assert retrieval_module._terms("pillars") == retrieval_module._terms("pillar")
+    assert retrieval_module._terms("interventions") == retrieval_module._terms("intervention")
+    assert retrieval_module._terms("services") == retrieval_module._terms("service")
+    # Words that merely end in "s" must survive intact.
+    assert retrieval_module._terms("assessment") == {"assessment"}
+
+
+def test_embed_text_puts_structural_context_before_the_body():
+    """Headings carry the only searchable form of many facts, so they are embedded."""
+    chunk = Chunk(
+        content="Low knowledge and risk perception",
+        heading="Pillar 1 (Primary Prevention):",
+        section="Pillar 1 (Primary Prevention):",
+    )
+    text = _embed_text(chunk)
+
+    assert "Pillar 1 (Primary Prevention)" in text
+    assert "Low knowledge and risk perception" in text
+    assert text.index("Pillar 1") < text.index("Low knowledge")
+    # A section that only repeats its heading is not embedded twice.
+    assert text.count("Pillar 1 (Primary Prevention)") == 1
+
+
+def test_heading_match_raises_a_chunk_above_a_vocabulary_match(
+    db: Session, fake_embeddings, monkeypatch
+):
+    """A question about a named section must find that section.
+
+    The decoy chunk repeats the query's words but is not what was asked for; the
+    real answer is split across sibling chunks whose body text never names the
+    group. Ranking has to weight their shared heading.
+
+    The relevance threshold is lowered because this test is about ordering, and
+    the fake embedder's similarity for these short rows sits under MIN_RELEVANCE.
+    """
+    monkeypatch.setattr(settings, "MIN_RELEVANCE", 0.0)
+    other = 778
+    for model in (DocumentChunk, DocumentVersion, Document):
+        db.query(model).filter(model.organization_id == other).delete(synchronize_session=False)
+    db.query(Organization).filter(Organization.id == other).delete(synchronize_session=False)
+    db.commit()
+    db.add(Organization(id=other, name="Heading Boost Org"))
+
+    db.add(Document(id=201, title="HIV SOP", status=DocumentStatus.ACTIVE, organization_id=other))
+    db.add(
+        DocumentVersion(
+            id=201,
+            document_id=201,
+            organization_id=other,
+            version_label="1.0",
+            is_active=True,
+            processing_status=ProcessingStatus.READY,
+            file_path="201.txt",
+        )
+    )
+    rows = [
+        # Mentions the group without listing it.
+        ("PMTCT is built on four pillars of care.", "PMTCT Overview"),
+        # The actual members, findable only through their shared heading.
+        ("Low knowledge and risk perception", "Pillar 1 (Primary Prevention):"),
+        ("High rates of unintended pregnancy", "Pillar 2 (Preventing Unintended Pregnancy):"),
+    ]
+    for index, (content, heading) in enumerate(rows):
+        db.add(
+            DocumentChunk(
+                document_id=201,
+                document_version_id=201,
+                organization_id=other,
+                content=content,
+                chunk_index=index,
+                section=heading,
+                heading=heading,
+                page_number=1,
+                embedding=fake_embeddings(content),
+            )
+        )
+    db.commit()
+
+    results = retrieve("What are the pillars of PMTCT?", db=db, organization_id=other, limit=10)
+    assert results, "the section chunks must be retrievable"
+
+    pillars = [r for r in results if r.chunk.heading.startswith("Pillar ")]
+    assert len(pillars) == 2, "both sibling sections must be retrieved"
+    for row in pillars:
+        assert row.heading_score > 0, "the shared heading must contribute to the score"
+        # The heading term has to actually lift the row, not merely be recorded.
+        assert row.score > 0.8 * row.relevance + 0.2 * row.keyword_score
 
 
 def test_citations_keep_document_version_section_and_page(knowledge_base):

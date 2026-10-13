@@ -128,7 +128,7 @@ class Settings(BaseSettings):
     EMBEDDING_DIM: int = 1024
 
     # --- Retrieval ---
-    TOP_K: int = 5
+    TOP_K: int = 8
     MIN_RELEVANCE: float = 0.55
 
     @property

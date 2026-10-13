@@ -62,7 +62,7 @@ def ingest_document_version(db: Session, version: DocumentVersion) -> Document:
             batch = chunks[start : start + _EMBED_BATCH]
             try:
                 vectors: list[list[float] | None] = embedder.embed_many(
-                    [chunk.content for chunk in batch]
+                    [_embed_text(chunk) for chunk in batch]
                 )
             except EmbeddingError as exc:
                 # One bad chunk must not cost us the whole batch.
@@ -129,6 +129,25 @@ def _mark_error(db: Session, version: DocumentVersion, document: Document, messa
     db.commit()
 
 
+def _embed_text(chunk: Chunk) -> str:
+    """The text a chunk is embedded from: its structural context plus its body.
+
+    A chunk's heading frequently carries the only mention of the concept it
+    belongs to — a body reading "Low knowledge and risk perception" is only
+    findable as "Pillar 1 (Primary Prevention)" through its heading. Embedding
+    the body alone made those chunks unreachable, which is how a passage saying
+    "it is built on four pillars" could be retrieved while the passages listing
+    the pillars could not, leaving the model to invent them.
+    """
+    parts = [p.strip() for p in (chunk.heading, chunk.section, chunk.content) if p and p.strip()]
+    # Preserve order while dropping a section that merely repeats the heading.
+    unique: list[str] = []
+    for part in parts:
+        if part not in unique:
+            unique.append(part)
+    return "\n".join(unique)
+
+
 def _embed_individually(
     embedder, chunks: list[Chunk]
 ) -> list[list[float] | None]:
@@ -136,7 +155,7 @@ def _embed_individually(
     vectors: list[list[float] | None] = []
     for chunk in chunks:
         try:
-            vectors.append(embedder.embed(chunk.content))
+            vectors.append(embedder.embed(_embed_text(chunk)))
         except EmbeddingError as exc:
             logger.warning("Skipping chunk %s after embedding error: %s", chunk.chunk_index, exc)
             vectors.append(None)

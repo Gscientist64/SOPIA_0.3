@@ -243,6 +243,24 @@ Questions escalate from the model's own difficulty label; if the model omits it,
 a positional fallback keeps the progression predictable. The summary lists the
 SOP documents behind the weakest answers as topics to revisit.
 
+### Loading SOPs
+
+Documents uploaded through the browser are ingested inside the HTTP request. On a
+CPU-only machine embedding is slow enough that a large file times out long before
+it finishes, so use the script for batches and for anything sizeable:
+
+```bash
+cd backend
+python scripts/ingest_path.py --path ../sops --organization-id 1
+python scripts/ingest_path.py --path ../sops --organization-id 1 --dry-run   # list files only
+python scripts/ingest_path.py --path ../sops/PMTCT.txt --organization-id 1   # a single file
+```
+
+It copies each supported file into the upload store, creates the document and its
+first active version, ingests it with progress reporting, and skips files it has
+already ingested — so it is safe to re-run. Set `PUBLIC_ORGANIZATION_ID` to the
+same organisation id if guests should be able to search the new documents.
+
 ## 14. Running tests
 
 ```bash

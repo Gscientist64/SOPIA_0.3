@@ -172,8 +172,15 @@ interview is about the candidate rather than the SOP.
 
 ### Frontend
 - Register / login / logout, protected routes, role-aware navigation, 401 handling.
-- Chat page with streaming, citations, source modal, conversation sidebar,
-  retry/copy/clear, and a mode selector that disables unimplemented modes.
+- Chat page with streaming, citations, source modal, retry/copy/clear.
+- **One left sidebar.** Conversation history (new chat, search, rename, delete) lives
+  beside the Chat and Interviews links instead of in a second rail, and is shared
+  through a `ConversationsProvider` so the layout and the transcript agree on which
+  thread is open. It appears on Chat and Interviews and stays out of the way on the
+  other pages.
+- The chat mode selector was removed: the assistant always answers from the SOPs,
+  and Learning, Exams and Interviews have their own pages, so the dropdown only
+  invited confusion.
 - Dashboard, Progress, Knowledge Base (with admin upload + version management),
   Learn, Exams, Interviews, Administration pages.
 

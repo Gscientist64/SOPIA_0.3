@@ -34,6 +34,12 @@ _STOPWORDS = {
     "with", "be", "as", "at", "by", "from", "if", "when", "which", "who", "our",
 }
 
+# Weight of the heading/section overlap in the blended ranking score. Measured
+# against multi-part SOP answers (a list split across sibling chunks): without it
+# the siblings lose to unrelated chunks that merely share vocabulary, and the
+# model answers a "what are the four X" question with only one of them.
+_HEADING_WEIGHT = 0.2
+
 
 @dataclass
 class RetrievedChunk:
@@ -43,20 +49,52 @@ class RetrievedChunk:
     relevance: float  # cosine similarity in [-1, 1]
     distance: float
     keyword_score: float = 0.0
+    # How much of the query appears in the chunk's heading/section.
+    heading_score: float = 0.0
     score: float = 0.0
 
 
+def _singular(term: str) -> str:
+    """Fold simple plurals so "pillars" matches "Pillar 1".
+
+    Without this the keyword signal is blind to the most common way a query
+    names a list the document labels in the singular.
+    """
+    if len(term) > 4 and term.endswith("ies"):
+        return term[:-3] + "y"
+    if len(term) > 3 and term.endswith("es") and term[:-2].endswith(("s", "x", "z", "ch", "sh")):
+        return term[:-2]
+    if len(term) > 3 and term.endswith("s") and not term.endswith("ss"):
+        return term[:-1]
+    return term
+
+
 def _terms(text: str) -> set[str]:
-    return {t for t in _TOKEN.findall(text.lower()) if len(t) > 2 and t not in _STOPWORDS}
+    return {
+        _singular(t) for t in _TOKEN.findall(text.lower()) if len(t) > 2 and t not in _STOPWORDS
+    }
 
 
-def _keyword_overlap(query_terms: set[str], content: str) -> float:
+def _keyword_overlap(query_terms: set[str], text: str) -> float:
     if not query_terms:
         return 0.0
-    content_terms = _terms(content)
+    content_terms = _terms(text)
     if not content_terms:
         return 0.0
     return len(query_terms & content_terms) / len(query_terms)
+
+
+def _searchable(chunk) -> str:
+    """The text a chunk is matched against, including its structural context.
+
+    Headings often carry the only searchable form of a fact — a chunk whose body
+    is "Interventions: community-level HIV education" is only findable as
+    "Pillar 1 (Primary Prevention)" because of its heading. Embeddings are
+    computed from the chunk body at ingestion time, so the heading is folded in
+    here to give structure weight without re-embedding every document.
+    """
+    parts = (chunk.heading or "", chunk.section or "", chunk.content or "")
+    return "\n".join(p for p in parts if p)
 
 
 def _cosine_distance(left, right) -> float:
@@ -179,7 +217,11 @@ def retrieve(
     for chunk, document, version, dist in candidates:
         dist = float(dist)
         similarity = 1.0 - dist  # cosine distance -> similarity
-        kw = _keyword_overlap(query_terms, chunk.content)
+        kw = _keyword_overlap(query_terms, _searchable(chunk))
+        # A heading that names the queried concept is a strong structural signal:
+        # an answer split across sibling chunks ("Pillar 1", "Pillar 2", ...) would
+        # otherwise lose those chunks to unrelated ones that merely share vocabulary.
+        hkw = _keyword_overlap(query_terms, f"{chunk.heading or ''} {chunk.section or ''}")
         results.append(
             RetrievedChunk(
                 chunk=chunk,
@@ -188,7 +230,8 @@ def retrieve(
                 relevance=similarity,
                 distance=dist,
                 keyword_score=kw,
-                score=0.8 * similarity + 0.2 * kw,
+                heading_score=hkw,
+                score=0.8 * similarity + 0.2 * kw + _HEADING_WEIGHT * hkw,
             )
         )
 

@@ -32,6 +32,9 @@ build/
 # --- Uploads / user data (may contain confidential SOPs) ---
 backend/uploads/
 backend/data/
+# Source SOPs to ingest locally. Kept out of the public repository; the
+# organisation's own procedures are not ours to publish.
+sops/
 
 # --- Editors / OS ---
 .vscode/
