@@ -113,7 +113,11 @@ class Settings(BaseSettings):
     OLLAMA_EMBED_MODEL: str = "mxbai-embed-large"
     # How long Ollama keeps a model resident in RAM after a request. A short
     # value frees memory (less system lag) at the cost of reloading next time.
-    OLLAMA_KEEP_ALIVE: str = "2m"
+    # How long Ollama keeps a model in RAM. Measured: a reload costs ~2-5s and
+    # the KV cache is discarded with it, so a short window makes every question
+    # after a pause pay both. 15m covers normal back-and-forth answering; lower
+    # it on a memory-constrained machine, since the two models hold ~1.9 GB.
+    OLLAMA_KEEP_ALIVE: str = "15m"
     # Threads Ollama may use for CPU inference. 0 = let Ollama decide (all
     # physical cores). Lower it (e.g. 2) to keep the machine responsive.
     OLLAMA_NUM_THREAD: int = 0

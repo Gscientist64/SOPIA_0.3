@@ -96,6 +96,49 @@ in `Error` with `is_active` still true, and since retrieval requires
 The corpus was re-embedded this way (documents 9-11, 3 328 chunks, ~63 min). All
 111 existing citations still resolve to live chunks: 0 detached, 0 dangling.
 
+### Answer latency, measured
+Answers take roughly 40-60 s on this laptop. Every stage was measured rather
+than assumed, and several plausible optimisations turned out to be wrong:
+
+| Stage | Cost | Notes |
+|---|---|---|
+| Prompt evaluation | **20-28 s** | 2 384 prompt tokens at 82-122 tok/s. The dominant cost. |
+| Generation | ~12 tok/s | A 350-token answer is ~29 s. |
+| Query embedding | ~3 s | `mxbai-embed-large` on CPU. |
+| pgvector search | 35 ms | Exact scan of 6 684 rows; an ANN index is not worth it here. |
+| LLM reload | **2.5-5.1 s** | Caused per question by the embedder evicting the LLM. |
+
+What was done:
+
+- **The retrieval call no longer fetches embedding vectors.** Postgres computes
+  the distance in SQL, and each row's 1 024-dim vector was being shipped back for
+  nothing. Measured 1.68 s -> 0.27 s.
+- **`OLLAMA_KEEP_ALIVE` 2m -> 15m**, so a pause between questions no longer costs
+  a reload.
+
+What was measured and deliberately *not* done:
+
+- **An HNSW index.** The query already executes in 35 ms; the wall time was
+  network transfer, not vector maths. The index would optimise the wrong thing.
+- **More threads.** `OLLAMA_NUM_THREAD=4` was *slower* than 3 (21.9 s vs 19.8 s
+  of prompt evaluation) — inference is memory-bandwidth bound on this CPU, so
+  adding a core does not help and only makes the laptop less responsive.
+- **`OLLAMA_MAX_LOADED_MODELS=2`.** This is real and measured: the embedding call
+  evicts the LLM, costing 2.5-5.1 s of reload on *every* question and discarding
+  the KV cache (proven by timing two identical prompts with and without an embed
+  between them: 0.0 s reload vs 5.1 s). It is left at 1 because the two models
+  need ~1.9 GB and this machine has only ~2.2 GB free, so enabling it risks
+  swapping. On a machine with more headroom it is the cheapest available win.
+
+Prompt caching does not rescue this: an identical prompt re-evaluates in 0.1 s,
+but every new question has a different context block, so the full ~20 s is paid
+each time.
+
+The honest conclusion is that this is a hardware ceiling, not a code defect. The
+one large lever available is **`AI_PROVIDER=gemini`** (already implemented):
+answers drop from ~50 s to a few seconds at the cost of needing internet, which
+is why the offline demo — whose whole point is no internet — stays on CPU.
+
 ### Production deployment preparation
 The application was ready but there was **no way to deploy it**: no Dockerfile or
 process manager, no reverse-proxy config, a dev-only launcher, and — most

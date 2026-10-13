@@ -18,7 +18,7 @@ import logging
 import re
 from dataclasses import dataclass
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, defer
 
 from app.core.config import settings
 from app.models.document import Document, DocumentChunk, DocumentStatus, DocumentVersion
@@ -166,7 +166,17 @@ def _candidates(
     """Return ``(chunk, document, version, cosine_distance)``, nearest first."""
     if _uses_pgvector(db):
         distance = DocumentChunk.embedding.cosine_distance(query_vector).label("distance")
-        rows = q.add_columns(distance).order_by(distance).limit(fetch_limit).all()
+        # PostgreSQL computes the distance inside the query, so the embedding
+        # vector itself never has to come back. Deferring it avoids shipping
+        # ~8 KB per row from a hosted database, which is most of the wall time
+        # of this call. The Python path below still needs the vectors.
+        rows = (
+            q.options(defer(DocumentChunk.embedding))
+            .add_columns(distance)
+            .order_by(distance)
+            .limit(fetch_limit)
+            .all()
+        )
         return [(chunk, document, version, float(dist)) for chunk, document, version, dist in rows]
 
     # Exact search: score the filtered rows in Python. Bounded by the corpus, so
